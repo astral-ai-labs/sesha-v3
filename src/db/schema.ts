@@ -104,6 +104,7 @@ export const articles = pgTable(
     headline: varchar("headline", { length: 500 }),
     blob: text("blob"),
     content: text("content"),
+    richContent: text("rich_content"),
 
     // ─────────────── Input snapshot ────────
 

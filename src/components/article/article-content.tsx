@@ -17,21 +17,24 @@ import React, { useState, useTransition } from "react";
 // shadcn/ui components ------------------------------------------------------
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 
 // Icons ---------------------------------------------------------------------
-import { Info, Maximize2, Minimize2, Loader2 } from "lucide-react";
+import { Info, Loader2 } from "lucide-react";
 
 // External Packages ---------------------------------------------------------
 import wordCount from "word-count";
+
+// Types ---------------------------------------------------------------------
+import { SerializedEditorState } from "lexical";
 
 // Context -------------------------------------------------------------------
 import { useArticle } from "./article-context";
 
 // Local Modules -------------------------------------------------------------
 import { createNewVersionAction } from "@/actions/article";
+import TextEditor from "../text-editor/TextEditor";
 
 /* ==========================================================================*/
 // Helper Functions
@@ -50,20 +53,29 @@ import { createNewVersionAction } from "@/actions/article";
  */
 function ArticleContent() {
   const { currentArticle, setCurrentVersion, hasChanges, updateCurrentArticle } = useArticle();
-  const [expanded, setExpanded] = useState(false);
+  // const [expanded, setExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // Get content directly from the content field
   const content = currentArticle?.content || '';
+  const richContent = currentArticle?.richContent;
   
   const wordCountValue = wordCount(content);
   const maxWords = 50_000;
 
-  const handleExpandToggle = () => setExpanded((p) => !p);
+  // const handleExpandToggle = () => setExpanded((p) => !p);
 
   const handleContentChange = (newContent: string) => {
     if (currentArticle) {
       updateCurrentArticle({ content: newContent });
+    }
+  };
+
+  const handleRichTextChange = (editorState: SerializedEditorState) => {
+    if (currentArticle) {
+      updateCurrentArticle({ 
+        richContent: JSON.stringify(editorState)
+      });
     }
   };
 
@@ -91,6 +103,7 @@ function ArticleContent() {
           headline: currentArticle.headline,
           blob: currentArticle.blob,
           content: currentArticle.content,
+          richContent: currentArticle.richContent,
           status: "completed" as const
         };
         
@@ -118,6 +131,8 @@ function ArticleContent() {
     });
   };
 
+  const parsedRichContent = richContent ? JSON.parse(richContent) : undefined;
+
   /* -------------------------------- UI --------------------------------- */
   return (
     <div className="space-y-4 pb-12">
@@ -138,7 +153,14 @@ function ArticleContent() {
 
       {/* Content Display */}
       <div className="relative">
-        <Textarea
+        <TextEditor
+          initialContent={parsedRichContent}
+          content={!parsedRichContent ? content : undefined}
+          onChange={(newContent) => handleContentChange(newContent)}
+          onRichTextChange={handleRichTextChange}
+          placeholder="No content available."
+        />
+        {/* <Textarea
           id="article-content"
           value={content}
           onChange={(e) => handleContentChange(e.target.value)}
@@ -147,15 +169,15 @@ function ArticleContent() {
             expanded ? "min-h-fit" : "min-h-[400px] max-h-[400px]"
           }`}
           style={expanded ? { height: 'auto', minHeight: '400px' } : {}}
-        />
-        <Button
+        /> */}
+        {/* <Button
           variant="ghost"
           size="sm"
           onClick={handleExpandToggle}
           className="absolute top-2 right-2 h-6 w-6 p-0 bg-muted/50 hover:bg-muted/80 transition-colors cursor-pointer"
         >
           {expanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
-        </Button>
+        </Button> */}
       </div>
 
       {/* Actions */}

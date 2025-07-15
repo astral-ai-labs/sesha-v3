@@ -17,10 +17,14 @@ import { generateText } from "ai";
 // Local Utilities ---
 import { formatPrompt2, PromptType, validateRequest } from "@/lib/utils";
 import { createPipelineLogger } from "@/lib/pipeline-logger";
+import { updateArticle } from "@/db/dal";
 
 // Local Types ----
 import { Step08ColorCodeRequest, Step08ColorCodeAIResponse } from "@/types/aggregate";
 import { anthropic } from "@ai-sdk/anthropic";
+
+// External Packages ---
+import * as cheerio from 'cheerio';
 
 /* ==========================================================================*/
 // Configuration
@@ -35,7 +39,7 @@ const MAX_TOKENS = 3000;
 // ==========================================================================
 
 // Original color coding system prompt (commented out)
-/*
+
 const SYSTEM_PROMPT = `
 <instructions>
 Take the given article and reprint it word for word, but color coded. Reprint it with each sentence on a new line (unless the sentence is INSIDE a direct quote). Each line in the input should be appropriately color coded based on the corresponding source article from the source list. The purpose is just to color code the existing article based on the source article tags with no other changes.
@@ -90,9 +94,10 @@ EXAMPLE OUTPUT WITH EVERY SENTENCE OF THE ARTICLE COLOR CODED AND ON A NEW LINE:
 
 NOTE: Wrap each sentence in the corresponding paragraph tags, but keep items within a direct quote together as indicated by the example.
 `;
-*/
+
 
 // New system prompt without color coding
+/*
 const SYSTEM_PROMPT = `
 <instructions>
 Take the given article and reprint it word for word. Reprint it with each sentence on a new line (unless the sentence is INSIDE a direct quote). The purpose is to format the existing article while removing all source article tags and preserving content with no other changes.
@@ -134,13 +139,14 @@ Nume turns 30 in November, according to CNN.
 
 NOTE: Keep items within a direct quote together as indicated by the example, but remove all source tags.
 `;
+*/
 
 // ==========================================================================
 // User Prompt
 // ==========================================================================
 
 // Original color coding user prompt (commented out)
-/*
+
 const USER_PROMPT = `
 <instructions>
 Take the given article and reprint it word for word, but color coded. Reprint it with each sentence on a new line (unless the sentence is INSIDE a direct quote). Each line in the input should be appropriately color coded based on the source list. Each line should be wrapped in the  "<p>" and "<span> tags with no extra spacing. 
@@ -151,9 +157,10 @@ Take the given article and reprint it word for word, but color coded. Reprint it
 {{rewrittenArticle}}
 </rewrite>
 `;
-*/
+
 
 // New user prompt without color coding
+/*
 const USER_PROMPT = `
 <instructions>
 Take the given article and reprint it word for word. Reprint it with each sentence on a new line (unless the sentence is INSIDE a direct quote). Remove all source tags like "(Source 1)", "(Source 2)", etc. from the text completely. Preserve all other attributions exactly as they appear.
@@ -164,6 +171,7 @@ Take the given article and reprint it word for word. Reprint it with each senten
 {{rewrittenArticle}}
 </rewrite>
 `;
+*/
 
 // ==========================================================================
 // Assistant Prompt
@@ -172,6 +180,51 @@ Take the given article and reprint it word for word. Reprint it with each senten
 const ASSISTANT_PROMPT = `
 <final-draft>
 `;
+
+/* ==========================================================================*/
+// Helper Function
+/* ==========================================================================*/
+function convertHtmlToLexicalJSON(html: string): string {
+  const $ = cheerio.load(html);
+
+  const paragraphs = $("p").map((_, p) => {
+    const spans = $(p).find("span").map((_, span) => {
+      const styleAttr = $(span).attr("style") || "";
+      const match = styleAttr.match(/color:\s*([^;]+)/i);
+      const color = match ? match[1].trim() : "";
+
+      return {
+        detail: 0,
+        format: 0,
+        mode: "normal",
+        style: color ? `color:${color}`: "",
+        text: $(span).text(),
+        type: "text",
+        version: 1
+      };
+    }).get();
+
+    return {
+      children: spans,
+      direction: "ltr",
+      format: "",
+      indent: 0,
+      type: "paragraph",
+      version: 1
+    };
+  }).get();
+
+  return JSON.stringify({
+    root: {
+      children: paragraphs,
+      direction: "ltr",
+      format: "",
+      indent: 0,
+      type: "root",
+      version: 1
+    }
+  });
+}
 
 /* ==========================================================================*/
 // Route Handler
@@ -230,9 +283,13 @@ export async function POST(request: NextRequest) {
       .replace(/<\/?final-draft[^>]*>/g, "") // Remove any <final-draft> or </final-draft> tags
       .trim(); // Remove leading and trailing whitespace
 
+    // Convert HTML to Lexical JSON
+    const richContentJson = convertHtmlToLexicalJSON(cleanedText);
+
     // Build response
-    const response: Step08ColorCodeAIResponse = {
+    const response: Step08ColorCodeAIResponse & { richContent: string }= {
       colorCodedArticle: cleanedText,
+      richContent: richContentJson
     };
 
     logger.logStepResponse(8, "Color Code", response);
@@ -240,12 +297,14 @@ export async function POST(request: NextRequest) {
     // Close the logger to ensure logs are flushed
     await logger.close();
 
+    // Return both to client
     return NextResponse.json(response);
   } catch (error) {
     console.error("Step 08 - Color code failed:", error);
 
     const errorResponse: Step08ColorCodeAIResponse = {
       colorCodedArticle: "",
+      richContent: "",
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

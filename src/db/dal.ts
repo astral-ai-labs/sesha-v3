@@ -246,6 +246,7 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
       headline: articles.headline,
       blob: articles.blob,
       content: articles.content,
+      richContent: articles.richContent,
       sourceType: articles.sourceType,
 
       // 1st source
@@ -524,7 +525,7 @@ export async function createArticleRecord(payload: {
  * @param blobs - Generated blobs from step 3
  * @param formattedArticle - Final formatted article from step 7
  */
-export async function updateArticleWithResults(articleId: string, userId: string, isSuccessful: boolean, headline: string, blobs: string[], formattedArticle: string): Promise<void> {
+export async function updateArticleWithResults(articleId: string, userId: string, isSuccessful: boolean, headline: string, blobs: string[], formattedArticle: string, richContent?: string): Promise<void> {
   await db
     .update(articles)
     .set({
@@ -546,7 +547,7 @@ export async function updateArticleWithResults(articleId: string, userId: string
  * @param updates - Partial article fields to update
  * @returns Updated article or null if not found
  */
-export async function updateArticle(articleId: string, userId: string, updates: Partial<Pick<Article, "headline" | "blob" | "content" | "status">>): Promise<Article | null> {
+export async function updateArticle(articleId: string, userId: string, updates: Partial<Pick<Article, "headline" | "blob" | "content" | "richContent" | "status">>): Promise<Article | null> {
   console.log("🗄️ updateArticle called with:", { articleId, userId, updates });
 
   try {
@@ -567,6 +568,7 @@ export async function updateArticle(articleId: string, userId: string, updates: 
         id: updatedArticle.id,
         headline: updatedArticle.headline,
         blob: updatedArticle.blob ? `${updatedArticle.blob.substring(0, 50)}...` : null,
+        richContent: updatedArticle.richContent ? "Has rich content" : "No rich content",
         updatedAt: updatedArticle.updatedAt,
       });
     }

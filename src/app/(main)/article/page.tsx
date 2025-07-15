@@ -65,7 +65,7 @@ async function ArticlePage({
   }
 
   return (
-    <ArticleProvider articles={articles} initialVersion={version ? Number(version) : undefined}>
+    <ArticleProvider articles={articles} initialVersion={version ? Number(version) : undefined} key={`${slug}-${version || 'latest'}`}>
       <div className="h-[calc(100vh-4rem)] group-has-data-[collapsible=icon]/sidebar-wrapper:h-[calc(100vh-3rem)] transition-[height] ease-linear">
         <ResizablePanelGroup direction="horizontal" className="h-full">
           {/* Start of Left Panel --- */}

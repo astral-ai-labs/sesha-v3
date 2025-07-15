@@ -60,6 +60,7 @@ interface TextEditorProps {
   initialContent?: SerializedEditorState;
   content?: string;
   onChange?: (content: string) => void;
+  onRichTextChange?: (editorState: SerializedEditorState) => void;
   placeholder?: string;
 }
 
@@ -99,10 +100,27 @@ function ContentUpdatePlugin({ content }: { content?: string }) {
           root.clear();
           
           if (content.trim()) {
-            const paragraph = $createParagraphNode();
-            const textNode = $createTextNode(content);
-            paragraph.append(textNode);
-            root.append(paragraph);
+            // Parse HTML from content
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(content, "text/html");
+
+            doc.querySelectorAll("p").forEach((p) => {
+              const paragraphNode = $createParagraphNode();
+
+              p.querySelectorAll("span").forEach((span) => {
+                const color = span.style.color;
+                const text = span.textContent ?? "";
+
+                const textNode = $createTextNode(text);
+
+                // Apply color as a style
+                textNode.setStyle(`color: ${color}`);
+
+                paragraphNode.append(textNode);
+              });
+
+              root.append(paragraphNode);
+            });
           }
         }
       });
@@ -176,13 +194,15 @@ function ToolbarPlugins({ expanded, onExpandToggle }: { expanded: boolean; onExp
  * Component that manages all editor plugins including floating toolbar
  */
 function EditorPlugins({ 
-  onChange, 
+  onChange,
+  onRichTextChange,
   placeholder, 
   expanded, 
   onExpandToggle,
-  content 
+  content
 }: { 
   onChange?: (content: string) => void; 
+  onRichTextChange?: (editorState: SerializedEditorState) => void;
   placeholder?: string; 
   expanded: boolean;
   onExpandToggle: () => void;
@@ -223,17 +243,21 @@ function EditorPlugins({
           ErrorBoundary={LexicalErrorBoundary}
         />
         
-        {/* Content Update Plugin */}
-        <ContentUpdatePlugin content={content} />
-        
         {/* OnChange Plugin */}
-        {onChange && (
+        {(onChange || onRichTextChange) && (
           <OnChangePlugin
             onChange={(editorState) => {
               editorState.read(() => {
                 // Get the text content using Lexical's built-in method
-                const textContent = $getRoot().getTextContent();
-                onChange(textContent);
+                if (onChange) {
+                  const textContent = $getRoot().getTextContent();
+                  onChange(textContent);
+                }
+
+                if (onRichTextChange) {
+                  const serializedState = editorState.toJSON();
+                  onRichTextChange(serializedState);
+                }
               });
             }}
           />
@@ -248,6 +272,7 @@ function EditorPlugins({
         {floatingAnchorElem && (
           <FloatingTextFormatToolbarPlugin anchorElem={floatingAnchorElem} />
         )}
+        <ContentUpdatePlugin content={content} />
       </div>
     </div>
   );
@@ -259,13 +284,15 @@ function EditorPlugins({
  * Inner component that has access to the Lexical editor context
  */
 function TextEditorInner({ 
-  onChange, 
+  onChange,
+  onRichTextChange,
   placeholder, 
   expanded, 
   onExpandToggle,
   content 
 }: { 
   onChange?: (content: string) => void; 
+  onRichTextChange?: (editorState: SerializedEditorState) => void;
   placeholder?: string; 
   expanded: boolean;
   onExpandToggle: () => void;
@@ -296,6 +323,7 @@ function TextEditorInner({
     >
       <EditorPlugins 
         onChange={onChange} 
+        onRichTextChange={onRichTextChange}
         placeholder={placeholder} 
         expanded={expanded} 
         onExpandToggle={onExpandToggle} 
@@ -310,7 +338,13 @@ function TextEditorInner({
  *
  * Enhanced rich text editor with comprehensive toolbar functionality
  */
-function TextEditor({ initialContent, content, onChange, placeholder = "Start typing..." }: TextEditorProps = {}) {
+function TextEditor({ 
+  initialContent, 
+  content, 
+  onChange, 
+  onRichTextChange,
+  placeholder = "Start typing..." 
+}: TextEditorProps = {}) {
   const [expanded, setExpanded] = useState(false);
   
   const handleExpandToggle = () => setExpanded((prev) => !prev);
@@ -324,26 +358,24 @@ function TextEditor({ initialContent, content, onChange, placeholder = "Start ty
     // Create a simple paragraph with the text content
     const simpleState = {
       root: {
-        children: [
-          {
-            children: [
-              {
-                detail: 0,
-                format: 0,
-                mode: "normal",
-                style: "",
-                text: content,
-                type: "text",
-                version: 1,
-              },
-            ],
-            direction: "ltr",
-            format: "",
-            indent: 0,
-            type: "paragraph",
-            version: 1,
-          },
-        ],
+        children: content.split("\n").filter(line => line.trim()).map(line => ({
+          children: [
+            {
+              detail: 0,
+              format: 0,
+              mode: "normal",
+              style: "",
+              text: line,
+              type: "text",
+              version: 1,
+            },
+          ],
+          direction: "ltr",
+          format: "",
+          indent: 0,
+          type: "paragraph",
+          version: 1,
+        })),
         direction: "ltr",
         format: "",
         indent: 0,
@@ -366,9 +398,10 @@ function TextEditor({ initialContent, content, onChange, placeholder = "Start ty
         <TooltipProvider>
           <TextEditorInner 
             onChange={onChange} 
+            onRichTextChange={onRichTextChange}
             placeholder={placeholder} 
             expanded={expanded} 
-            onExpandToggle={handleExpandToggle} 
+            onExpandToggle={handleExpandToggle}
             content={content}
           />
         </TooltipProvider>
