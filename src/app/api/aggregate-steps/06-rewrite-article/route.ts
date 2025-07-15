@@ -103,15 +103,15 @@ NOTE: We own the rights and permissions to reprint this text.
 
 ####
 
-{{#initialSources.0.useVerbatim}}You MUST begin the article with this exact FULL text with (Source 1 {{initialSources.0.accredit}}) written after each line: 
+{{#sources.0.useVerbatim}}You MUST begin the article with this exact FULL text with (Source 1 {{sources.0.accredit}}) written after each line: 
 <article-opening>
-{{stepOutputs.factsBitSplitting.0.text}}
+{{sources.0.factsBitSplitting1}}
 </article-opening>
-Note: make sure the sentences after flow seamlessly from the editor-written opening.{{/initialSources.0.useVerbatim}}
+Note: make sure the sentences after flow seamlessly from the editor-written opening.{{/sources.0.useVerbatim}}
 
 Reprint this article with the requested minor changes: 
-{{#initialSources.0.useVerbatim}}{{stepOutputs.factsBitSplitting.0.text}}{{/initialSources.0.useVerbatim}}
-{{stepOutputs.writeArticle.text}}
+{{#sources.0.useVerbatim}}{{sources.0.factsBitSplitting1}}{{/sources.0.useVerbatim}}
+{{article}}
 `;
 
 // ==========================================================================
@@ -138,6 +138,9 @@ export async function POST(request: NextRequest) {
     } as Step06RewriteArticleAIResponse);
     if (validationError) return validationError;
 
+    // Extract article text from step outputs
+    const article = body.articleStepOutputs.writeArticle?.text || "";
+
     // Format System Prompt ------
     const finalSystemPrompt = formatPrompt2(SYSTEM_PROMPT, undefined, PromptType.SYSTEM);
 
@@ -145,8 +148,8 @@ export async function POST(request: NextRequest) {
     const finalUserPrompt = formatPrompt2(
       USER_PROMPT,
       {
-        initialSources: body.sources,
-        stepOutputs: body.articleStepOutputs,
+        sources: body.sources,
+        article: article,
       },
       PromptType.USER
     );
@@ -155,7 +158,7 @@ export async function POST(request: NextRequest) {
     const finalAssistantPrompt = formatPrompt2(ASSISTANT_PROMPT, undefined, PromptType.ASSISTANT);
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-step06-${Date.now()}`);
+    const logger = createPipelineLogger(`route-step06-${Date.now()}`, 'aggregate');
     logger.logStepPrompts(6, "Rewrite Article", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
 
     // Generate text using messages approach

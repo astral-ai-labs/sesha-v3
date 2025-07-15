@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-step02-${Date.now()}`);
+    const logger = createPipelineLogger(`route-step02-${Date.now()}`, 'digest');
     logger.logStepPrompts(2, "Summarize Facts", systemPrompt, userPrompt);
 
     // Generate structured object using AI SDK

@@ -232,8 +232,30 @@ interface ArticleHandlerProviderProps {
 
 function ArticleHandlerProvider({ children, initialMode = 'single', initialState }: ArticleHandlerProviderProps) {
   const baseState = createInitialState(initialMode);
-  const mergedState = initialState ? { ...baseState, ...initialState } : baseState;
+  
+  // More explicit merging to ensure mode is preserved from initialState
+  let mergedState: ArticleHandlerState;
+  if (initialState) {
+    mergedState = {
+      ...baseState,
+      ...initialState,
+      // Explicitly ensure mode from initialState takes precedence
+      mode: initialState.mode || baseState.mode,
+    };
+  } else {
+    mergedState = baseState;
+  }
+  
+  // // Debug logging to track mode changes
+  // console.log("🔧 ArticleHandlerProvider initialMode:", initialMode);
+  // console.log("🔧 ArticleHandlerProvider baseState.mode:", baseState.mode);
+  // console.log("🔧 ArticleHandlerProvider initialState?.mode:", initialState?.mode);
+  // console.log("🔧 ArticleHandlerProvider mergedState.mode:", mergedState.mode);
+  
   const [state, dispatch] = useReducer(articleHandlerReducer, mergedState);
+
+  // Debug logging to track final state
+  console.log("🔧 ArticleHandlerProvider final state.mode:", state.mode);
 
   /* ---------------------------- Dispatch API ---------------------------- */
   const setBasic: ArticleHandlerDispatch["setBasic"] = (field, value) => dispatch({ type: "SET_BASIC", field, value });

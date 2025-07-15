@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-step02-${Date.now()}`);
+    const logger = createPipelineLogger(`route-step02-${Date.now()}`, 'aggregate');
 
     // Process all sources in parallel
     const processedSources = await processSourcesInParallel(body.sources, logger);

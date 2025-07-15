@@ -235,15 +235,18 @@ export interface Step07RewriteArticle2Response extends BaseStepResponse {
 // ==========================================================================
 
 export interface Step08ColorCodeRequest {
+  sources: Source[]; // Sources with accumulated processing results
   articleStepOutputs: ArticleStepOutputs;
 }
 
 /** AI-only response from the route (no article management) */
 export interface Step08ColorCodeAIResponse {
   colorCodedArticle: string;
+  richContent: string;
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step08ColorCodeResponse extends BaseStepResponse {
   colorCodedArticle: string;
+  richContent: string;
 }

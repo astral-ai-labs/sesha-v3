@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
     const finalAssistantPrompt = formatPrompt2(ASSISTANT_PROMPT, { input: body }, PromptType.ASSISTANT);
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-step03-${Date.now()}`);
+    const logger = createPipelineLogger(`route-step03-${Date.now()}`, 'aggregate');
     logger.logStepPrompts(3, "Headlines Blobs", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
 
     // Generate text using messages approach

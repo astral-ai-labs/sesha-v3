@@ -91,11 +91,13 @@ async function buildPipelineRequest(params: PipelineSubmissionParams, sourceType
   };
 
   if (sourceType === "single") {
+    console.log("🚀 buildPipelineRequest - single source mode");
     return {
       ...baseRequest,
       source: params.sources[0], // Use first source for single-source (digest)
     };
   } else {
+    console.log("🚀 buildPipelineRequest - multi source mode");
     return {
       ...baseRequest,
       sources: params.sources.map((source, index) => ({
@@ -128,6 +130,9 @@ export function usePipelineSubmission() {
   const triggerPipeline = async (params: PipelineSubmissionParams, sourceType: "single" | "multi") => {
     if (isLoading) return;
 
+    console.log("🚀 usePipelineSubmission - triggerPipeline called with sourceType:", sourceType);
+    console.log("🚀 usePipelineSubmission - params.sources.length:", params.sources.length);
+
     setIsLoading(true);
 
     let request: DigestRequest | AggregateRequest;
@@ -147,7 +152,7 @@ export function usePipelineSubmission() {
 
     // Create article using the unified function - this will redirect on success
     // Don't wrap in try-catch because redirect throws a special Next.js error
-    await createArticleFromRequest(request);
+    await createArticleFromRequest(request, sourceType);
 
     // This code will not execute due to redirect, but leaving for completeness
     console.log("✅ Article processing started");

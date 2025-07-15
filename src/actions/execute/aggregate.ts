@@ -230,50 +230,90 @@ async function step02FactsBitSplitting2(
   console.log("🚀 Step 2: Facts Bit Splitting 2");
 
   try {
-    // Prepare the request for the API
-    const step02Request: FactsBitSplitting2Request = {
-      sources: step1Result.sources,
-    };
+    // Check if any source is a primary source
+    const hasPrimarySource = step1Result.sources.some(source => source.isPrimarySource);
 
-    // Log the step request
-    if (logger) {
-      logger.logStepRequest(2, "Facts Bit Splitting 2", step02Request);
+    if (hasPrimarySource) {
+      // Call the API route if there's a primary source
+      const step02Request: FactsBitSplitting2Request = {
+        sources: step1Result.sources,
+      };
+
+      // Log the step request
+      if (logger) {
+        logger.logStepRequest(2, "Facts Bit Splitting 2", step02Request);
+      }
+
+      // Call the API endpoint
+      const response = await fetch(`${baseUrl}/api/aggregate-steps/02-facts-bit-splitting-2`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(step02Request),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.statusText}`);
+      }
+
+      const aiResult: FactsBitSplitting2AIResponse = await response.json();
+
+      // Log the API response
+      if (logger) {
+        logger.logStepResponse(2, "Facts Bit Splitting 2", aiResult);
+      }
+
+      // Wrap AI response with article management
+      const result: FactsBitSplitting2Response = {
+        articleId,
+        stepNumber: 2,
+        success: true,
+        sources: aiResult.sources,
+      };
+
+      // Log step completion
+      if (logger) {
+        logger.logStepComplete(2, "Facts Bit Splitting 2", result);
+      }
+
+      return result;
+    } else {
+      // No primary source - manually populate factsBitSplitting2 field
+      console.log("📝 No primary source found, manually populating factsBitSplitting2");
+
+      const processedSources = step1Result.sources.map(source => ({
+        ...source,
+        factsBitSplitting2: "--" // Default value for non-primary sources
+      }));
+
+      // Log the manual processing
+      if (logger) {
+        logger.logStepRequest(2, "Facts Bit Splitting 2", { 
+          sources: step1Result.sources,
+          note: "Skipped API call - no primary sources" 
+        });
+        logger.logStepResponse(2, "Facts Bit Splitting 2", { 
+          sources: processedSources,
+          note: "Manual processing - no primary sources" 
+        });
+      }
+
+      // Build response
+      const result: FactsBitSplitting2Response = {
+        articleId,
+        stepNumber: 2,
+        success: true,
+        sources: processedSources,
+      };
+
+      // Log step completion
+      if (logger) {
+        logger.logStepComplete(2, "Facts Bit Splitting 2", result);
+      }
+
+      return result;
     }
-
-    // Call the API endpoint
-    const response = await fetch(`${baseUrl}/api/aggregate-steps/02-facts-bit-splitting-2`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(step02Request),
-    });
-
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-
-    const aiResult: FactsBitSplitting2AIResponse = await response.json();
-
-    // Log the API response
-    if (logger) {
-      logger.logStepResponse(2, "Facts Bit Splitting 2", aiResult);
-    }
-
-    // Wrap AI response with article management
-    const result: FactsBitSplitting2Response = {
-      articleId,
-      stepNumber: 2,
-      success: true,
-      sources: aiResult.sources,
-    };
-
-    // Log step completion
-    if (logger) {
-      logger.logStepComplete(2, "Facts Bit Splitting 2", result);
-    }
-
-    return result;
   } catch (error) {
     console.error("Step 2 - Facts bit splitting 2 failed:", error);
 
@@ -724,6 +764,7 @@ async function step07RewriteArticle2(
  */
 async function step08ColorCode(
   articleId: string, 
+  step2Result: FactsBitSplitting2Response,
   articleStepOutputs: ArticleStepOutputs, 
   logger: ReturnType<typeof createPipelineLogger> | null
 ): Promise<Step08ColorCodeResponse> {
@@ -732,6 +773,7 @@ async function step08ColorCode(
   try {
     // Prepare the request for the API
     const step08Request: Step08ColorCodeRequest = {
+      sources: step2Result.sources,
       articleStepOutputs: articleStepOutputs,
     };
 
@@ -766,6 +808,7 @@ async function step08ColorCode(
       stepNumber: 8,
       success: true,
       colorCodedArticle: aiResult.colorCodedArticle,
+      richContent: aiResult.richContent
     };
 
     // Log step completion
@@ -787,6 +830,7 @@ async function step08ColorCode(
       stepNumber: 8,
       success: false,
       colorCodedArticle: "",
+      richContent: ""
     };
   }
 }
@@ -810,14 +854,23 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
   console.log(`🚀 Starting aggregate pipeline execution for article: ${articleId}`);
 
   // Initialize pipeline logger
-  const logger = createPipelineLogger(`${request.metadata.userId}-${request.slug}`);
+  const logger = createPipelineLogger(`${request.metadata.userId}-${request.slug}`, 'aggregate');
 
   // Also set as global logger for route handlers to use
-  initializeGlobalLogger(`${request.metadata.userId}-${request.slug}`);
+  initializeGlobalLogger(`${request.metadata.userId}-${request.slug}`, 'aggregate');
 
   try {
-    // Log initial request
-    logger.logInitialRequest(request);
+    // Log initial request with complete data
+    logger.logInitialRequest({
+      requestType: 'AggregateRequest',
+      slug: request.slug,
+      headline: request.headline,
+      sources: request.sources,
+      sourcesCount: request.sources.length,
+      instructions: request.instructions,
+      metadata: request.metadata,
+      fullRequest: request // Include complete request object
+    });
 
     // Step 1: Facts Bit Splitting
     const step1Result = await step01FactsBitSplitting(articleId, request, logger);
@@ -915,7 +968,7 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
     await updateArticleStatus(articleId, request.metadata.userId, "90%");
 
     // Step 8: Color Code
-    const step8Result = await step08ColorCode(articleId, articleStepOutputs, logger);
+    const step8Result = await step08ColorCode(articleId, step2Result, articleStepOutputs, logger);
     
     if (!step8Result.success) {
       return await handleStepFailure(8, articleId, request.metadata.userId, logger);
@@ -925,7 +978,9 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
     const isSuccessful = validatePipelineSuccess(step1Result, step2Result, step3Result, step4Result, step5Result, step6Result, step7Result, step8Result);
 
     // Update article with results
-    await updateArticleWithResults(articleId, request.metadata.userId, isSuccessful, step3Result.headline, step3Result.blobs, step8Result.colorCodedArticle);
+    await updateArticleWithResults(articleId, request.metadata.userId, isSuccessful, step3Result.headline, step3Result.blobs, step8Result.colorCodedArticle, step8Result.richContent);
+    
+    // Persist the rich text version
 
     // Build response
     const response: PipelineResponse = {

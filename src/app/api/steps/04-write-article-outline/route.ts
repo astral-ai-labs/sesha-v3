@@ -280,7 +280,7 @@ You must follow these important mandatory editor instructions:
     );
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-step04-${Date.now()}`);
+    const logger = createPipelineLogger(`route-step04-${Date.now()}`, 'digest');
     logger.logStepPrompts(4, "Write Article Outline", systemPrompt, userPrompt);
 
     // Generate structured object using AI SDK

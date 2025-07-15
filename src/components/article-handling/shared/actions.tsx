@@ -44,6 +44,10 @@ function ArticleActions() {
   const { triggerPipeline, isLoading } = usePipelineSubmission();
 
   const handleGoClick = async () => {
+    // Debug logging to see what mode is being used
+    console.log("🚀 handleGoClick - current mode:", mode);
+    console.log("🚀 handleGoClick - sources count:", sources.length);
+    
     // Build request data compatible with both modes
     const requestData = {
       slug: basic.slug,
@@ -69,6 +73,8 @@ function ArticleActions() {
         orgId: metadata.orgId,
       },
     };
+
+    console.log("🚀 handleGoClick - about to call triggerPipeline with mode:", mode);
 
     // Submit using the unified hook
     await triggerPipeline(requestData, mode);

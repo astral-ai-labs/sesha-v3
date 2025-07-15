@@ -14,6 +14,7 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { Article } from "@/db/schema";
 import { ArticleVersionMetadata } from "@/db/dal";
+import { stat } from "fs";
 
 /* ==========================================================================*/
 // Types
@@ -80,6 +81,7 @@ function ArticleProvider({ children, articles, initialVersion }: ArticleProvider
     id: a.id,
     version: a.version,
     content: a.content,
+    richContent: a.richContent,
     contentLength: a.content?.length,
     contentType: typeof a.content
   })));
@@ -109,12 +111,28 @@ function ArticleProvider({ children, articles, initialVersion }: ArticleProvider
   
   // Update current article with changes
   const updateCurrentArticle = (updates: Partial<Article>) => {
-    console.log("🔄 updateCurrentArticle called with:", updates);
+    console.log("🔄 updateCurrentArticle called with:", {
+      headline: updates.headline,
+      blob: updates.blob,
+      content: updates.content ? `${updates.content.substring(0, 50)}...`: undefined,
+      richContent: updates.richContent ? "Has rich content" : undefined,
+      status: updates.status
+    });
     if (currentArticle) {
       const newArticle = { ...currentArticle, ...updates };
       console.log("📝 Setting new article:", {
-        old: { headline: currentArticle.headline, blob: currentArticle.blob },
-        new: { headline: newArticle.headline, blob: newArticle.blob }
+        old: { 
+          headline: currentArticle.headline, 
+          blob: currentArticle.blob,
+          contentLength: currentArticle.content?.length,
+          richContentLength: currentArticle.richContent?.length 
+        },
+        new: { 
+          headline: newArticle.headline, 
+          blob: newArticle.blob,
+          contentLength: newArticle.content?.length,
+          richContentLength: newArticle.richContent?.length
+        }
       });
       setCurrentArticle(newArticle);
     }
@@ -140,6 +158,8 @@ function ArticleProvider({ children, articles, initialVersion }: ArticleProvider
   const hasChanges = originalArticle && currentArticle ? (
     originalArticle.headline !== currentArticle.headline ||
     originalArticle.blob !== currentArticle.blob ||
+    originalArticle.content !== currentArticle.content ||
+    originalArticle.richContent !== currentArticle.richContent ||
     originalArticle.status !== currentArticle.status
   ) : false;
   
@@ -148,14 +168,23 @@ function ArticleProvider({ children, articles, initialVersion }: ArticleProvider
     original: originalArticle ? { 
       headline: originalArticle.headline, 
       blob: originalArticle.blob,
-      content: originalArticle.content,
+      content: originalArticle.content?.substring(0, 50),
+      richContent: originalArticle.richContent ? "Has rich content" : "No rich content",
       status: originalArticle.status
     } : null,
     current: currentArticle ? { 
       headline: currentArticle.headline, 
       blob: currentArticle.blob,
-      content: currentArticle.content,
+      content: currentArticle.content?.substring(0, 50),
+      richContent: currentArticle.richContent ? "Has rich content" : "No rich content",
       status: currentArticle.status
+    } : null,
+    fieldChanges: originalArticle && currentArticle ?{
+      headlineChanged: originalArticle.headline !== currentArticle.headline,
+      blobChanged: originalArticle.blob !== currentArticle.blob,
+      contentChanged: originalArticle.content !== currentArticle.content,
+      richContentChanged: originalArticle.richContent !== currentArticle.richContent,
+      statusChanged: originalArticle.status !== currentArticle.status
     } : null
   });
   

@@ -233,7 +233,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Log the formatted prompts if logger is available
-    const logger = createPipelineLogger(`route-step05-${Date.now()}`);
+    const logger = createPipelineLogger(`route-step05-${Date.now()}`, 'digest');
     logger.logStepPrompts(5, "Write Article", systemPrompt, userPrompt);
 
     // Generate structured object using AI SDK

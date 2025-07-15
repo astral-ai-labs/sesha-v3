@@ -24,6 +24,7 @@ interface PipelineLogData {
   step?: string
   stepNumber?: number
   stepName?: string
+  pipelineMode?: 'digest' | 'aggregate' // Track pipeline mode
   type: 'request' | 'response' | 'prompt' | 'info' | 'error' | 'slug_cleaning' | 'pipeline_start' | 'pipeline_complete'
   message: string
   data?: unknown
@@ -52,25 +53,31 @@ class PipelineLogger {
   private logger: winston.Logger
   private sessionId: string
   private logFilePath: string
+  private pipelineMode: 'digest' | 'aggregate'
 
-  constructor(sessionId?: string) {
+  constructor(sessionId?: string, pipelineMode: 'digest' | 'aggregate' = 'digest') {
     this.sessionId = sessionId || `pipeline-${Date.now()}`
+    this.pipelineMode = pipelineMode
     
     // Create timestamp for filename
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    this.logFilePath = path.join(process.cwd(), 'logs', `pipeline-${timestamp}-${this.sessionId}.log`)
+    this.logFilePath = path.join(process.cwd(), 'logs', `${pipelineMode}-pipeline-${timestamp}-${this.sessionId}.log`)
     
     // Determine if we're in a serverless/production environment where file system access is limited
+    // TODO: PUT THIS BACK
     const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NODE_ENV === 'production'
-    
+    // const isServerless = false
+
     // Configure transports based on environment
     const transports: winston.transport[] = [
       new winston.transports.Console({
         format: winston.format.combine(
           winston.format.colorize(),
           winston.format.simple(),
-          winston.format.printf(({ level, message, timestamp, step, type }) => {
-            return `${timestamp} [${level}] 📝 [${step || 'PIPELINE'}] ${type?.toString().toUpperCase()}: ${message}`
+          winston.format.printf((info) => {
+            const { level, message, timestamp, step, type } = info;
+            const mode = this.pipelineMode;
+            return `${timestamp} [${level}] 📝 [${mode.toUpperCase()}:${step || 'MAIN'}] ${type?.toString().toUpperCase()}: ${message}`
           })
         )
       })
@@ -109,27 +116,30 @@ class PipelineLogger {
       transports
     })
 
-    this.logger.info('Pipeline Logger initialized', {
+    this.logger.info(`${pipelineMode.charAt(0).toUpperCase() + pipelineMode.slice(1)} Pipeline Logger initialized`, {
       sessionId: this.sessionId,
+      pipelineMode: this.pipelineMode,
       logFilePath: isServerless ? 'console-only' : this.logFilePath,
       environment: isServerless ? 'serverless' : 'development',
       type: 'info',
-      message: 'Pipeline Logger initialized'
+      message: `${pipelineMode.charAt(0).toUpperCase() + pipelineMode.slice(1)} Pipeline Logger initialized`
     })
   }
 
   /**
-   * Log initial pipeline request
+   * Log initial pipeline request with all data
    */
   logInitialRequest(request: unknown) {
     const logData: PipelineLogData = {
       step: 'PIPELINE_START',
+      pipelineMode: this.pipelineMode,
       type: 'pipeline_start',
-      message: 'Initial pipeline request received',
-      data: request
+      message: `Initial ${this.pipelineMode} pipeline request received with full data`,
+      data: request, // Log complete request data
+      request: request // Also include in request field for consistency
     }
     
-    this.logger.info('Pipeline started', logData)
+    this.logger.info(`${this.pipelineMode.charAt(0).toUpperCase() + this.pipelineMode.slice(1)} pipeline started`, logData)
   }
 
   /**
@@ -138,6 +148,7 @@ class PipelineLogger {
   logSlugCleaning(originalSlug: string, cleanedSlug: string) {
     const logData: PipelineLogData = {
       step: 'SLUG_CLEANING',
+      pipelineMode: this.pipelineMode,
       type: 'slug_cleaning',
       message: 'Slug cleaning process',
       originalSlug,
@@ -156,6 +167,7 @@ class PipelineLogger {
       step: `STEP_${stepNumber}_PROMPTS`,
       stepNumber,
       stepName,
+      pipelineMode: this.pipelineMode,
       type: 'prompt',
       message: `Formatted prompts for ${stepName}`,
       systemPrompt,
@@ -170,84 +182,94 @@ class PipelineLogger {
   }
 
   /**
-   * Log step request being sent to API
+   * Log step request being sent to API with all data
    */
   logStepRequest(stepNumber: number, stepName: string, request: unknown) {
     const logData: PipelineLogData = {
       step: `STEP_${stepNumber}_REQUEST`,
       stepNumber,
       stepName,
+      pipelineMode: this.pipelineMode,
       type: 'request',
-      message: `API request for ${stepName}`,
-      request
+      message: `API request for ${stepName} with full data`,
+      request, // Log complete request data
+      data: request // Also include in data field for consistency
     }
     
     this.logger.info('Step request sent', logData)
   }
 
   /**
-   * Log step response from API
+   * Log step response from API with all data
    */
   logStepResponse(stepNumber: number, stepName: string, response: unknown) {
     const logData: PipelineLogData = {
       step: `STEP_${stepNumber}_RESPONSE`,
       stepNumber,
       stepName,
+      pipelineMode: this.pipelineMode,
       type: 'response',
-      message: `API response for ${stepName}`,
-      response
+      message: `API response for ${stepName} with full data`,
+      response, // Log complete response data
+      data: response // Also include in data field for consistency
     }
     
     this.logger.info('Step response received', logData)
   }
 
   /**
-   * Log step completion with final result
+   * Log step completion with final result and all data
    */
   logStepComplete(stepNumber: number, stepName: string, result: unknown) {
     const logData: PipelineLogData = {
       step: `STEP_${stepNumber}_COMPLETE`,
       stepNumber,
       stepName,
+      pipelineMode: this.pipelineMode,
       type: 'info',
-      message: `Step completed: ${stepName}`,
-      result
+      message: `Step completed: ${stepName} with full result data`,
+      result, // Log complete result data
+      data: result // Also include in data field for consistency
     }
     
     this.logger.info('Step completed', logData)
   }
 
   /**
-   * Log pipeline completion
+   * Log pipeline completion with all final data
    */
   logPipelineComplete(success: boolean, finalResponse: unknown) {
     const logData: PipelineLogData = {
       step: 'PIPELINE_COMPLETE',
+      pipelineMode: this.pipelineMode,
       type: 'pipeline_complete',
-      message: 'Pipeline execution completed',
+      message: `${this.pipelineMode.charAt(0).toUpperCase() + this.pipelineMode.slice(1)} pipeline execution completed`,
       success,
-      finalResponse
+      finalResponse, // Log complete final response
+      data: finalResponse // Also include in data field for consistency
     }
     
-    this.logger.info('Pipeline completed', logData)
+    this.logger.info(`${this.pipelineMode.charAt(0).toUpperCase() + this.pipelineMode.slice(1)} pipeline completed`, logData)
   }
 
   /**
-   * Log errors
+   * Log errors with all available data
    */
   logError(step: string, error: unknown) {
     const logData: PipelineLogData = {
       step,
+      pipelineMode: this.pipelineMode,
       type: 'error',
-      message: 'Error occurred',
+      message: `Error occurred in ${this.pipelineMode} pipeline`,
       error: error instanceof Error ? {
         name: error.name,
         message: error.message,
         stack: error.stack
-      } : error
+      } : error,
+      data: error // Also include in data field for consistency
     }
     
-    this.logger.error('Pipeline error', logData)
+    this.logger.error(`${this.pipelineMode.charAt(0).toUpperCase() + this.pipelineMode.slice(1)} pipeline error`, logData)
   }
 
   /**
@@ -288,20 +310,22 @@ let globalLogger: PipelineLogger | null = null
  * Create a new pipeline logger instance
  * 
  * @param sessionId - Optional session identifier
+ * @param pipelineMode - Optional pipeline mode ('digest' or 'aggregate')
  * @returns New PipelineLogger instance
  */
-export function createPipelineLogger(sessionId?: string): PipelineLogger {
-  return new PipelineLogger(sessionId)
+export function createPipelineLogger(sessionId?: string, pipelineMode: 'digest' | 'aggregate' = 'digest'): PipelineLogger {
+  return new PipelineLogger(sessionId, pipelineMode)
 }
 
 /**
  * Initialize global pipeline logger
  * 
  * @param sessionId - Optional session identifier
+ * @param pipelineMode - Optional pipeline mode ('digest' or 'aggregate')
  * @returns Global PipelineLogger instance
  */
-export function initializeGlobalLogger(sessionId?: string): PipelineLogger {
-  globalLogger = new PipelineLogger(sessionId)
+export function initializeGlobalLogger(sessionId?: string, pipelineMode: 'digest' | 'aggregate' = 'digest'): PipelineLogger {
+  globalLogger = new PipelineLogger(sessionId, pipelineMode)
   return globalLogger
 }
 

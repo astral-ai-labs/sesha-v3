@@ -801,14 +801,23 @@ async function runDigestPipeline(articleId: string, request: DigestRequest): Pro
   }
 
   // Initialize pipeline logger
-  const logger = createPipelineLogger(`${request.metadata.userId}-${request.slug}`);
+  const logger = createPipelineLogger(`${request.metadata.userId}-${request.slug}`, 'digest');
 
   // Also set as global logger for route handlers to use
-  initializeGlobalLogger(`${request.metadata.userId}-${request.slug}`);
+  initializeGlobalLogger(`${request.metadata.userId}-${request.slug}`, 'digest');
 
   try {
-    // Log initial request
-    logger.logInitialRequest(request);
+    // Log initial request with complete data
+    logger.logInitialRequest({
+      requestType: 'DigestRequest',
+      slug: request.slug,
+      headline: request.headline,
+      source: request.source,
+      instructions: request.instructions,
+      metadata: request.metadata,
+      isVerbatim: request.source.verbatim,
+      fullRequest: request // Include complete request object
+    });
 
     // Step 1: Extract Fact Quotes
     const step1Result = await step01ExtractFactQuotes(articleId, request, logger);

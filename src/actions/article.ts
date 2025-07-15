@@ -70,7 +70,10 @@ export async function createNewVersionAction(currentArticle: Article, updates: P
     articleId: currentArticle.id,
     slug: currentArticle.slug,
     currentVersion: currentArticle.version,
-    updates,
+    updates: {
+      ...updates,
+      richContent: updates.richContent ? "Has rich content" : "No rich content"
+    },
   });
 
   try {
@@ -90,6 +93,7 @@ export async function createNewVersionAction(currentArticle: Article, updates: P
         orgId: user.orgId.toString(),
         currentVersion: currentArticle.version, // This will increment to currentVersion + 1
       },
+      sourceType: currentArticle.sourceType,
       slug: currentArticle.slug,
       headline: updates.headline || currentArticle.headline || "",
       sources: extractSourcesFromArticle(currentArticle),
@@ -111,13 +115,20 @@ export async function createNewVersionAction(currentArticle: Article, updates: P
     const fieldsToUpdate = {
       ...(updates.blob !== undefined && { blob: updates.blob }),
       ...(updates.content !== undefined && { content: updates.content }),
+      ...(updates.richContent !== undefined && { richContent: updates.richContent }),
       ...(updates.status !== undefined && { status: updates.status }),
       ...(updates.headline !== undefined && { headline: updates.headline }),
     };
 
+    console.log("📝 Fields to update in new article:", {
+      ...fieldsToUpdate,
+      richContent: fieldsToUpdate.richContent ? "Has rich content" : "No rich content"
+    });
+
     if (Object.keys(fieldsToUpdate).length > 0) {
       console.log("📝 Updating new article with additional fields:", fieldsToUpdate);
-      await updateArticle(newArticle.id, user.id, fieldsToUpdate);
+      const updateResult = await updateArticle(newArticle.id, user.id, fieldsToUpdate);
+      console.log("📥 Update result:", updateResult ? "Success" : "Failed");
     }
 
     // Revalidate the article page to show the new version
