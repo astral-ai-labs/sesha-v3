@@ -1,0 +1,1 @@
+ALTER TABLE "runs" RENAME COLUMN "run_type" TO "source_type";

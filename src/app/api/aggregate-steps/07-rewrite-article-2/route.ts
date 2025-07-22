@@ -50,8 +50,8 @@ NOTES:
 - Don't add new credits for anything from editor notes
 - Dont add new credits for anything that is marked with a source number but no credit, for example, (Source 1) should not be credited since it doesn't have a credit like "CNN" inside the tag
 - Make sure to keep all existing instances of in-sentence attribution
-{{#initialSources.0.useVerbatim}}This opening text should remain unaltered, since it was already manually written by the editor: 
-{{stepOutputs.factsBitSplitting.0.text}}{{/initialSources.0.useVerbatim}}
+{{#sources.0.useVerbatim}}This opening text should remain unaltered, since it was already manually written by the editor: 
+{{sources.0.factsBitSplitting1}}{{/sources.0.useVerbatim}}
 
 NOTE: If there are multiple sources in the tags, use the first source listed in the tag. For example, if provided "Blah blah blah (Source 1 CNN, Source 3 NumeNews)" you would add credit as "Blah blah blah, according to CNN. (Source 1 CNN, Source 3 NumeNews)" since that is the first source listed in the source tag. But remember, if the source doesn't have a credit and only has a number it should not be credited.
 
@@ -99,16 +99,16 @@ const USER_PROMPT = `
 NOTE: Do not add any attribution or credits if the source tag just has a number (eg "Source 7" should not be credited anywhere, but "Source 7 NewsCo" would be credited as "NewsCo")
 
 IMPORTANT: Only add credits for these source articles:
-{{#initialSources.0.accredit}}{{initialSources.0.accredit}}{{/initialSources.0.accredit}}
-{{#initialSources.1.accredit}}{{initialSources.1.accredit}}{{/initialSources.1.accredit}}
-{{#initialSources.2.accredit}}{{initialSources.2.accredit}}{{/initialSources.2.accredit}}
-{{#initialSources.3.accredit}}{{initialSources.3.accredit}}{{/initialSources.3.accredit}}
-{{#initialSources.4.accredit}}{{initialSources.4.accredit}}{{/initialSources.4.accredit}}
-{{#initialSources.5.accredit}}{{initialSources.5.accredit}}{{/initialSources.5.accredit}}
+{{#sources.0.accredit}}Source 1 Credit: {{sources.0.accredit}}{{/sources.0.accredit}}
+{{#sources.1.accredit}}Source 2 Credit: {{sources.1.accredit}}{{/sources.1.accredit}}
+{{#sources.2.accredit}}Source 3 Credit: {{sources.2.accredit}}{{/sources.2.accredit}}
+{{#sources.3.accredit}}Source 4 Credit: {{sources.3.accredit}}{{/sources.3.accredit}}
+{{#sources.4.accredit}}Source 5 Credit: {{sources.4.accredit}}{{/sources.4.accredit}}
+{{#sources.5.accredit}}Source 6 Credit: {{sources.5.accredit}}{{/sources.5.accredit}}
 
 IMPORTANT: ONLY add attribution once per source article, and only one at a time
 <article>
-{{stepOutputs.rewriteArticle.text}}
+{{rewrittenArticle}}
 </article>
 `;
 
@@ -117,7 +117,7 @@ IMPORTANT: ONLY add attribution once per source article, and only one at a time
 // ==========================================================================
 
 const ASSISTANT_PROMPT = `
-<rewrite>{{#initialSources.0.useVerbatim}}{{stepOutputs.factsBitSplitting.0.text}}{{/initialSources.0.useVerbatim}}
+<rewrite>{{#sources.0.useVerbatim}}{{sources.0.factsBitSplitting1}}{{/sources.0.useVerbatim}}
 `;
 
 /* ==========================================================================*/
@@ -141,8 +141,8 @@ export async function POST(request: NextRequest) {
     const finalSystemPrompt = formatPrompt2(
       SYSTEM_PROMPT,
       { 
-        initialSources: body.sources,
-        stepOutputs: body.articleStepOutputs
+        sources: body.sources,
+        rewrittenArticle: body.articleStepOutputs.rewriteArticle?.text || ""
       },
       PromptType.SYSTEM
     );
@@ -151,8 +151,8 @@ export async function POST(request: NextRequest) {
     const finalUserPrompt = formatPrompt2(
       USER_PROMPT,
       { 
-        initialSources: body.sources,
-        stepOutputs: body.articleStepOutputs
+        sources: body.sources,
+        rewrittenArticle: body.articleStepOutputs.rewriteArticle?.text || ""
       },
       PromptType.USER
     );
@@ -161,18 +161,18 @@ export async function POST(request: NextRequest) {
     const finalAssistantPrompt = formatPrompt2(
       ASSISTANT_PROMPT,
       { 
-        initialSources: body.sources,
-        stepOutputs: body.articleStepOutputs
+        sources: body.sources,
+        rewrittenArticle: body.articleStepOutputs.rewriteArticle?.text || ""
       },
       PromptType.ASSISTANT
     );
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-step07-${Date.now()}`);
+    const logger = createPipelineLogger(`route-step07-${Date.now()}`, 'aggregate');
     logger.logStepPrompts(7, "Rewrite Article 2", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
 
     // Generate text using messages approach
-    const { text: rewrittenArticle } = await generateText({
+    const { text: rewrittenArticle, usage } = await generateText({
       model: MODEL,
       system: finalSystemPrompt,
       messages: [
@@ -192,6 +192,14 @@ export async function POST(request: NextRequest) {
     // Build response
     const response: Step07RewriteArticle2AIResponse = {
       rewrittenArticle,
+      usage: [
+        {
+          inputTokens: usage?.promptTokens ?? 0,
+          outputTokens: usage?.completionTokens ?? 0,
+          model: MODEL.modelId,
+          ...usage
+        },
+      ],
     };
 
     logger.logStepResponse(7, "Rewrite Article 2", response);
@@ -205,6 +213,7 @@ export async function POST(request: NextRequest) {
 
     const errorResponse: Step07RewriteArticle2AIResponse = {
       rewrittenArticle: "",
+      usage: [],
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

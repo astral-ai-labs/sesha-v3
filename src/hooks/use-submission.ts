@@ -31,11 +31,12 @@ import type { BlobsCount, LengthRange } from "@/db/schema";
 
 interface PipelineSubmissionParams {
   slug: string;
-  headline: string;
+  headline?: string;
   sources: {
     description: string;
     accredit: string;
     sourceText: string;
+    url: string;
     verbatim: boolean;
     primary: boolean;
     base: boolean;
@@ -45,11 +46,12 @@ interface PipelineSubmissionParams {
   };
   preset: {
     title: string;
-    blobs: string;
-    length: string;
+    blobs: BlobsCount;
+    length: LengthRange;
   };
   metadata: {
-    currentVersion?: number;
+    currentVersion?: number | null;
+    currentVersionDecimal?: string | null;
     orgId: number;
   };
 }
@@ -80,6 +82,7 @@ async function buildPipelineRequest(params: PipelineSubmissionParams, sourceType
       userId: authUser.userId,
       orgId: params.metadata.orgId.toString(),
       currentVersion: params.metadata.currentVersion || null,
+      currentVersionDecimal: params.metadata.currentVersionDecimal || null,
     },
     slug: params.slug,
     headline: params.headline || "",
@@ -91,17 +94,20 @@ async function buildPipelineRequest(params: PipelineSubmissionParams, sourceType
   };
 
   if (sourceType === "single") {
+    console.log("🚀 buildPipelineRequest - single source mode");
     return {
       ...baseRequest,
       source: params.sources[0], // Use first source for single-source (digest)
     };
   } else {
+    console.log("🚀 buildPipelineRequest - multi source mode");
     return {
       ...baseRequest,
       sources: params.sources.map((source, index) => ({
         number: index + 1,
         accredit: source.accredit,
         text: source.sourceText,
+        url: source.url,
         useVerbatim: source.verbatim,
         isPrimarySource: source.primary,
         isBaseSource: source.base, // First source is base source
@@ -128,6 +134,9 @@ export function usePipelineSubmission() {
   const triggerPipeline = async (params: PipelineSubmissionParams, sourceType: "single" | "multi") => {
     if (isLoading) return;
 
+    console.log("🚀 usePipelineSubmission - triggerPipeline called with sourceType:", sourceType);
+    console.log("🚀 usePipelineSubmission - params.sources.length:", params.sources.length);
+
     setIsLoading(true);
 
     let request: DigestRequest | AggregateRequest;
@@ -147,7 +156,7 @@ export function usePipelineSubmission() {
 
     // Create article using the unified function - this will redirect on success
     // Don't wrap in try-catch because redirect throws a special Next.js error
-    await createArticleFromRequest(request);
+    await createArticleFromRequest(request, sourceType);
 
     // This code will not execute due to redirect, but leaving for completeness
     console.log("✅ Article processing started");

@@ -180,6 +180,7 @@ export function extractSourcesFromArticle(article: Article): Array<{
   description: string;
   accredit: string;
   sourceText: string;
+  url?: string;
   verbatim: boolean;
   primary: boolean;
 }> {
@@ -189,6 +190,7 @@ export function extractSourcesFromArticle(article: Article): Array<{
   const sourceMappings = [
     {
       text: article.inputSourceText1,
+      url: article.inputSourceUrl1,
       description: article.inputSourceDescription1,
       accredit: article.inputSourceAccredit1,
       verbatim: article.inputSourceVerbatim1,
@@ -196,6 +198,7 @@ export function extractSourcesFromArticle(article: Article): Array<{
     },
     {
       text: article.inputSourceText2,
+      url: article.inputSourceUrl2,
       description: article.inputSourceDescription2,
       accredit: article.inputSourceAccredit2,
       verbatim: article.inputSourceVerbatim2,
@@ -203,6 +206,7 @@ export function extractSourcesFromArticle(article: Article): Array<{
     },
     {
       text: article.inputSourceText3,
+      url: article.inputSourceUrl3,
       description: article.inputSourceDescription3,
       accredit: article.inputSourceAccredit3,
       verbatim: article.inputSourceVerbatim3,
@@ -210,6 +214,7 @@ export function extractSourcesFromArticle(article: Article): Array<{
     },
     {
       text: article.inputSourceText4,
+      url: article.inputSourceUrl4,
       description: article.inputSourceDescription4,
       accredit: article.inputSourceAccredit4,
       verbatim: article.inputSourceVerbatim4,
@@ -217,6 +222,7 @@ export function extractSourcesFromArticle(article: Article): Array<{
     },
     {
       text: article.inputSourceText5,
+      url: article.inputSourceUrl5,
       description: article.inputSourceDescription5,
       accredit: article.inputSourceAccredit5,
       verbatim: article.inputSourceVerbatim5,
@@ -224,6 +230,7 @@ export function extractSourcesFromArticle(article: Article): Array<{
     },
     {
       text: article.inputSourceText6,
+      url: article.inputSourceUrl6,
       description: article.inputSourceDescription6,
       accredit: article.inputSourceAccredit6,
       verbatim: article.inputSourceVerbatim6,
@@ -238,6 +245,7 @@ export function extractSourcesFromArticle(article: Article): Array<{
         description: mapping.description || '',
         accredit: mapping.accredit || '',
         sourceText: mapping.text,
+        url: mapping.url || '',
         verbatim: mapping.verbatim || false,
         primary: mapping.primary || false,
       });

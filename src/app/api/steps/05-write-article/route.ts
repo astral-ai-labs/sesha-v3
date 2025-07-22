@@ -233,11 +233,11 @@ export async function POST(request: NextRequest) {
     );
 
     // Log the formatted prompts if logger is available
-    const logger = createPipelineLogger(`route-step05-${Date.now()}`);
+    const logger = createPipelineLogger(`route-step05-${Date.now()}`, 'digest');
     logger.logStepPrompts(5, "Write Article", systemPrompt, userPrompt);
 
     // Generate structured object using AI SDK
-    const { text: article } = await generateText({
+    const { text: article, usage } = await generateText({
       model,
       system: systemPrompt,
       messages: [
@@ -263,6 +263,14 @@ export async function POST(request: NextRequest) {
     // Build response - only AI data
     const response: Step05WriteArticleAIResponse = {
       article: article,
+      usage: [
+        {
+          inputTokens: usage?.promptTokens ?? 0,
+          outputTokens: usage?.completionTokens ?? 0,
+          model: model.modelId,
+          ...usage
+        },
+      ],
     };
 
     logger.logStepResponse(5, "Write Article", response);
@@ -276,6 +284,7 @@ export async function POST(request: NextRequest) {
 
     const errorResponse: Step05WriteArticleAIResponse = {
       article: "",
+      usage: [],
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // External Packages ---------------------------------------------------------
-import { Info, Trash2, Maximize2, Minimize2 } from "lucide-react";
+import { Info, Trash2, Maximize2, Minimize2, GripVertical } from "lucide-react";
 import wordCount from "word-count";
 
 // Context -------------------------------------------------------------------
@@ -45,15 +45,18 @@ interface SourceInputProps {
 /* ==========================================================================*/
 
 function SourceInput({ sourceIndex }: SourceInputProps) {
-  const { sources, mode, setSourceUrl, setSourceUsage, removeSource } = useArticleHandler();
+  const { sources, mode, setSourceUrl, setSourceUsage, removeSource, reorderSources, canReorderSources } = useArticleHandler();
   
   // Move all hooks to the top before any conditional logic
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [textExpanded, setTextExpanded] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   
   const source = sources[sourceIndex];
   const canRemoveSource = mode === "multi" && sources.length > 1;
+
 
   if (!source) return null;
 
@@ -110,6 +113,43 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
   const handleTextChange = (val: string) => setSourceUsage(sourceIndex, "sourceText", val);
   const handleTextExpandToggle = () => setTextExpanded((p) => !p);
 
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent) => {
+    if (!canReorderSources) return;
+    e.dataTransfer.setData("text/plain", sourceIndex.toString());
+    e.dataTransfer.effectAllowed = "move";
+    setIsDragging(true);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setDragOverIndex(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!canReorderSources) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverIndex(sourceIndex);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    if (!canReorderSources) return;
+    e.preventDefault();
+    const fromIndex = parseInt(e.dataTransfer.getData("text/plain"));
+    const toIndex = sourceIndex;
+    
+    if (fromIndex !== toIndex) {
+      reorderSources(fromIndex, toIndex);
+    }
+    
+    setDragOverIndex(null);
+  };
+
   /**
    * handlePaste - Clean up pasted text
    */
@@ -144,7 +184,19 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
   const isRequiredSource = mode === 'single' || isFirstSource; // First source always required, all sources required in single mode
 
   return (
-    <div className="space-y-6 border border-border/50 rounded-md p-6 bg-muted/5">
+    <div 
+      className={`space-y-6 border border-border/50 rounded-md p-6 bg-muted/5 transition-all duration-200 ${
+        isDragging ? "opacity-50" : ""
+      } ${
+        dragOverIndex === sourceIndex ? "ring-2 ring-blue-500 ring-offset-2" : ""
+      }`}
+      draggable={canReorderSources}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {/* Header --- */}
       {mode === 'multi' && (
         <div className="flex justify-between items-center">
@@ -152,6 +204,16 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
             {`Source ${sourceIndex + 1}`}
             {isRequiredSource && <span className="text-xs text-red-600 ml-2">required</span>}
           </h3>
+          {canReorderSources && (
+            <div className="flex items-center gap-2">
+              <div 
+                className="cursor-grab active:cursor-grabbing p-1 rounded hover:bg-muted transition-colors"
+                title="Drag to reorder sources"
+              >
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -280,13 +342,19 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
               {mode === 'multi' && (
                 <div className="flex items-center space-x-2">
                   <Checkbox 
-                    className="cursor-pointer"
+                    className={`cursor-pointer ${sourceIndex !== 0 ? 'opacity-50' : ''}`}
                     id={`base-source-${sourceIndex}`} 
                     checked={source.usage.base} 
-                    onCheckedChange={(checked) => handleUsageField("base", checked)} 
+                    onCheckedChange={(checked) => {
+                      // Only allow base source for the first source (index 0)
+                      if (sourceIndex === 0) {
+                        handleUsageField("base", checked);
+                      }
+                    }}
+                    disabled={sourceIndex !== 0}
                   />
                   <div className="flex items-center gap-2">
-                    <Label htmlFor={`base-source-${sourceIndex}`} className="text-sm font-medium cursor-pointer">
+                    <Label htmlFor={`base-source-${sourceIndex}`} className={`text-sm font-medium cursor-pointer ${sourceIndex !== 0 ? 'opacity-50' : ''}`}>
                       Base Source
                     </Label>
                     <Tooltip>
@@ -294,7 +362,7 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
                         <Info className="h-3 w-3 text-muted-foreground cursor-pointer" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Mark this as the base source for the aggregation</p>
+                        <p>{sourceIndex === 0 ? "Mark this as the base source for the aggregation" : "Only the first source can be marked as base source"}</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>

@@ -54,7 +54,7 @@ export async function sendCompletionEmail(
     }
 
     // Calculate version for URL
-    const version = currentVersion ? currentVersion + 1 : 1;
+    const version = currentVersion ? currentVersion : 1;
 
     // Construct href URL
     const href = `${baseUrl}/article?slug=${slug}&version=${version}`;

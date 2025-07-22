@@ -99,6 +99,41 @@
       "when": 1751991614113,
       "tag": "0013_wandering_warstar",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1752536361043,
+      "tag": "0014_daily_agent_zero",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1752678976961,
+      "tag": "0015_brave_shriek",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1752679506547,
+      "tag": "0016_milky_spectrum",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1752871584383,
+      "tag": "0017_complex_skaar",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1753140039971,
+      "tag": "0018_minor_green_goblin",
+      "breakpoints": true
     }
   ]
 }

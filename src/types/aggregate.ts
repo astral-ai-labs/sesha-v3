@@ -21,6 +21,7 @@ export interface AggregateRequestMetadata {
   userId: string;
   orgId: string;
   currentVersion: number | null; // null if creating new article, number if creating new version
+  currentVersionDecimal: string | null; // null if creating new article, string if creating new version
 }
 
 /** Complete aggregate request with all required data */
@@ -45,6 +46,9 @@ export interface BaseStepResponse {
 
 export interface PipelineResponse {
   success: boolean;
+  costUsd: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
 }
 
 // ==========================================================================
@@ -55,6 +59,7 @@ export interface Source {
   number: number;
   accredit: string;
   text: string;
+  url: string;
   useVerbatim: boolean;
   isPrimarySource: boolean;
   isBaseSource: boolean;
@@ -102,12 +107,17 @@ export interface Step01FactsBitSplittingRequest {
 
 /** AI-only response from the route (no article management) */
 export interface Step01FactsBitSplittingAIResponse {
-  sources: Source[];
+  sources: AggregateSource[];
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step01FactsBitSplittingResponse extends BaseStepResponse {
-  sources: Source[];
+  sources: AggregateSource[];
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
 }
 
 // ==========================================================================
@@ -126,6 +136,11 @@ export interface FactsBitSplitting2AIResponse {
 /** Full response for the pipeline (includes article management) */
 export interface FactsBitSplitting2Response extends BaseStepResponse {
   sources: Source[];
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
 }
 
 // ==========================================================================
@@ -143,12 +158,23 @@ export interface Step03HeadlinesBlobsRequest {
 export interface Step03HeadlinesBlobsAIResponse {
   headline: string;
   blobs: string[];
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step03HeadlinesBlobsResponse extends BaseStepResponse {
   headline: string;
   blobs: string[];
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
 }
 
 // ==========================================================================
@@ -164,11 +190,22 @@ export interface Step04WriteArticleOutlineRequest {
 /** AI-only response from the route (no article management) */
 export interface Step04WriteArticleOutlineAIResponse {
   outline: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step04WriteArticleOutlineResponse extends BaseStepResponse {
   outline: string;
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
 }
 
 // ==========================================================================
@@ -185,11 +222,22 @@ export interface Step05WriteArticleRequest {
 /** AI-only response from the route (no article management) */
 export interface Step05WriteArticleAIResponse {
   article: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step05WriteArticleResponse extends BaseStepResponse {
   article: string;
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
 }
 
 // ==========================================================================
@@ -204,11 +252,22 @@ export interface Step06RewriteArticleRequest {
 /** AI-only response from the route (no article management) */
 export interface Step06RewriteArticleAIResponse {
   rewrittenArticle: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step06RewriteArticleResponse extends BaseStepResponse {
   rewrittenArticle: string;
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
 }
 
 // ==========================================================================
@@ -223,11 +282,22 @@ export interface Step07RewriteArticle2Request {
 /** AI-only response from the route (no article management) */
 export interface Step07RewriteArticle2AIResponse {
   rewrittenArticle: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step07RewriteArticle2Response extends BaseStepResponse {
   rewrittenArticle: string;
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
 }
 
 // ==========================================================================
@@ -235,15 +305,47 @@ export interface Step07RewriteArticle2Response extends BaseStepResponse {
 // ==========================================================================
 
 export interface Step08ColorCodeRequest {
+  sources: Source[]; // Sources with accumulated processing results
   articleStepOutputs: ArticleStepOutputs;
 }
 
 /** AI-only response from the route (no article management) */
 export interface Step08ColorCodeAIResponse {
   colorCodedArticle: string;
+  richContent: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step08ColorCodeResponse extends BaseStepResponse {
   colorCodedArticle: string;
+  richContent: string;
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
+}
+
+// ==========================================================================
+// Aggregate Source (with usage/model for cost tracking)
+// ==========================================================================
+
+/**
+ * AggregateSource
+ *
+ * Extends Source with optional usage/model fields for token/cost tracking.
+ */
+export interface AggregateSource extends Source {
+  usage?: Array<{
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }>;
 }

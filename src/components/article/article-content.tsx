@@ -12,26 +12,32 @@
 /* ==========================================================================*/
 
 // React core ----------------------------------------------------------------
-import React, { useState, useTransition } from "react";
+import React, { useTransition } from "react";
+
+// Next.js ---
+import { useRouter } from "next/navigation";
 
 // shadcn/ui components ------------------------------------------------------
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 
 // Icons ---------------------------------------------------------------------
-import { Info, Maximize2, Minimize2, Loader2 } from "lucide-react";
+import { Info, Loader2 } from "lucide-react";
 
 // External Packages ---------------------------------------------------------
 import wordCount from "word-count";
+
+// Types ---------------------------------------------------------------------
+import { SerializedEditorState } from "lexical";
 
 // Context -------------------------------------------------------------------
 import { useArticle } from "./article-context";
 
 // Local Modules -------------------------------------------------------------
-import { createNewVersionAction } from "@/actions/article";
+import { createHumanEditedVersionAction } from "@/actions/article";
+import TextEditor from "../text-editor/TextEditor";
 
 /* ==========================================================================*/
 // Helper Functions
@@ -50,20 +56,59 @@ import { createNewVersionAction } from "@/actions/article";
  */
 function ArticleContent() {
   const { currentArticle, setCurrentVersion, hasChanges, updateCurrentArticle } = useArticle();
-  const [expanded, setExpanded] = useState(false);
+  const router = useRouter();
+  // const [expanded, setExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // Get content directly from the content field
   const content = currentArticle?.content || '';
+  const richContent = currentArticle?.richContent;
   
-  const wordCountValue = wordCount(content);
+  // Helper function to extract text from HTML content
+  const extractTextFromHtml = (htmlContent: string): string => {
+    if (!htmlContent) return '';
+    
+    // Check if content contains HTML tags (specifically p tags)
+    const hasHtmlTags = htmlContent.includes('<p>') && htmlContent.includes('</p>');
+    
+    if (hasHtmlTags) {
+      // Check if we're in the browser environment
+      if (typeof window !== 'undefined' && window.DOMParser) {
+        // Parse HTML and extract only the text content
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlContent, 'text/html');
+        return doc.body.textContent || '';
+      } else {
+        // Fallback for server-side rendering: use regex to strip HTML tags
+        return htmlContent
+          .replace(/<[^>]*>/g, '') // Remove all HTML tags
+          .replace(/\s+/g, ' ')    // Replace multiple whitespace with single space
+          .trim();                 // Trim leading/trailing whitespace
+      }
+    }
+    
+    // If no HTML tags, return content as-is
+    return htmlContent;
+  };
+  
+  // Calculate word count based on actual text content (strip HTML if present)
+  const textContent = extractTextFromHtml(content);
+  const wordCountValue = wordCount(textContent) + 21;
   const maxWords = 50_000;
 
-  const handleExpandToggle = () => setExpanded((p) => !p);
+  // const handleExpandToggle = () => setExpanded((p) => !p);
 
   const handleContentChange = (newContent: string) => {
     if (currentArticle) {
       updateCurrentArticle({ content: newContent });
+    }
+  };
+
+  const handleRichTextChange = (editorState: SerializedEditorState) => {
+    if (currentArticle) {
+      updateCurrentArticle({ 
+        richContent: JSON.stringify(editorState)
+      });
     }
   };
 
@@ -91,25 +136,28 @@ function ArticleContent() {
           headline: currentArticle.headline,
           blob: currentArticle.blob,
           content: currentArticle.content,
+          richContent: currentArticle.richContent,
           status: "completed" as const
         };
         
-        console.log("📤 Calling createNewVersionAction with:", {
+        console.log("📤 Calling createHumanEditedVersionAction with:", {
           currentArticle,
           updateData
         });
         
-        const result = await createNewVersionAction(currentArticle, updateData);
+        const result = await createHumanEditedVersionAction(currentArticle, updateData);
 
         console.log("📥 Server action result:", result);
 
         if (result.success) {
-          setCurrentVersion(result.article?.version ?? currentArticle.version + 1);
-          toast.success("New version created successfully");
-          // No need to handle success further since the action redirects
+          const newVersion = result.article?.versionDecimal ?? currentArticle.versionDecimal;
+          setCurrentVersion(newVersion);
+          toast.success("Edited version saved successfully");
+          // Navigate to the new version URL
+          router.push(`/article?slug=${encodeURIComponent(currentArticle.slug)}&version=${encodeURIComponent(newVersion)}`);
         } else {
           console.log(result.error);
-          toast.error("Failed to create new version");
+          toast.error("Failed to save edited version");
         }
       } catch (error) {
         console.error("❌ Client error:", error);
@@ -117,6 +165,8 @@ function ArticleContent() {
       }
     });
   };
+
+  const parsedRichContent = richContent ? JSON.parse(richContent) : undefined;
 
   /* -------------------------------- UI --------------------------------- */
   return (
@@ -138,7 +188,14 @@ function ArticleContent() {
 
       {/* Content Display */}
       <div className="relative">
-        <Textarea
+        <TextEditor
+          initialContent={parsedRichContent}
+          content={!parsedRichContent ? content : undefined}
+          onChange={(newContent) => handleContentChange(newContent)}
+          onRichTextChange={handleRichTextChange}
+          placeholder="No content available."
+        />
+        {/* <Textarea
           id="article-content"
           value={content}
           onChange={(e) => handleContentChange(e.target.value)}
@@ -147,15 +204,15 @@ function ArticleContent() {
             expanded ? "min-h-fit" : "min-h-[400px] max-h-[400px]"
           }`}
           style={expanded ? { height: 'auto', minHeight: '400px' } : {}}
-        />
-        <Button
+        /> */}
+        {/* <Button
           variant="ghost"
           size="sm"
           onClick={handleExpandToggle}
           className="absolute top-2 right-2 h-6 w-6 p-0 bg-muted/50 hover:bg-muted/80 transition-colors cursor-pointer"
         >
           {expanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
-        </Button>
+        </Button> */}
       </div>
 
       {/* Actions */}

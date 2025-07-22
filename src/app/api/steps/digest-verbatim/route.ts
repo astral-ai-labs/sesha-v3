@@ -150,11 +150,11 @@ export async function POST(request: NextRequest) {
     const finalAssistantPrompt = formatPrompt2(ASSISTANT_PROMPT, undefined, PromptType.ASSISTANT);
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-digest-verbatim-${Date.now()}`);
+    const logger = createPipelineLogger(`route-digest-verbatim-${Date.now()}`, 'digest');
     logger.logStepPrompts(8, "Digest Verbatim", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
 
     // Generate text using messages approach
-    const { text: formattedArticle } = await generateText({
+    const { text: formattedArticle, usage } = await generateText({
       model: MODEL,
       system: finalSystemPrompt,
       messages: [
@@ -171,9 +171,22 @@ export async function POST(request: NextRequest) {
       maxTokens: MAX_TOKENS,
     });
 
+    // Clean up the response by removing any <o></o> tags and trimming whitespace
+    const cleanedText = formattedArticle
+      .replace(/<\/?output[^>]*>/g, '') // Remove any <o> or </o> tags
+      .trim(); // Remove leading and trailing whitespace
+
     // Build response
     const response = {
-      formattedArticle,
+      formattedArticle: cleanedText,
+      usage: [
+        {
+          inputTokens: usage?.promptTokens ?? 0,
+          outputTokens: usage?.completionTokens ?? 0,
+          model: MODEL.modelId,
+          ...usage
+        },
+      ],
     };
 
     logger.logStepResponse(8, "Digest Verbatim", response);
@@ -187,6 +200,7 @@ export async function POST(request: NextRequest) {
 
     const errorResponse = {
       formattedArticle: "",
+      usage: [],
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

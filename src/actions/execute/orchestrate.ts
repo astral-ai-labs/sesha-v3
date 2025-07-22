@@ -14,7 +14,7 @@
 import "server-only";
 
 // Local Database ----
-import { getArticleById, updateArticleStatus } from "@/db/dal";
+import { getArticleById, updateArticleStatus, createRun, updateRun } from "@/db/dal";
 
 // Local Pipeline Functions ----
 import { runDigestPipeline } from "./digest";
@@ -53,11 +53,13 @@ function buildDigestRequestFromArticle(article: Article): DigestRequest {
       userId: article.createdBy || "",
       orgId: article.orgId.toString(),
       currentVersion: article.version,
+      currentVersionDecimal: article.versionDecimal,
     },
     slug: article.slug,
     headline: article.headline || "",
     source: {
       description: article.inputSourceDescription1 || "",
+      url: article.inputSourceUrl1 || "",
       accredit: article.inputSourceAccredit1 || "",
       sourceText: article.inputSourceText1,
       verbatim: article.inputSourceVerbatim1,
@@ -88,6 +90,7 @@ function buildAggregateRequestFromArticle(article: Article): AggregateRequest {
   if (article.inputSourceText1) {
     sources.push({
       number: sourceNumber,
+      url: article.inputSourceUrl1 || "",
       accredit: article.inputSourceAccredit1 || "",
       text: article.inputSourceText1,
       useVerbatim: article.inputSourceVerbatim1 || false,
@@ -101,6 +104,7 @@ function buildAggregateRequestFromArticle(article: Article): AggregateRequest {
   if (article.inputSourceText2) {
     sources.push({
       number: sourceNumber,
+      url: article.inputSourceUrl2 || "",
       accredit: article.inputSourceAccredit2 || "",
       text: article.inputSourceText2,
       useVerbatim: article.inputSourceVerbatim2 || false,
@@ -114,6 +118,7 @@ function buildAggregateRequestFromArticle(article: Article): AggregateRequest {
   if (article.inputSourceText3) {
     sources.push({
       number: sourceNumber,
+      url: article.inputSourceUrl3 || "",
       accredit: article.inputSourceAccredit3 || "",
       text: article.inputSourceText3,
       useVerbatim: article.inputSourceVerbatim3 || false,
@@ -127,6 +132,7 @@ function buildAggregateRequestFromArticle(article: Article): AggregateRequest {
   if (article.inputSourceText4) {
     sources.push({
       number: sourceNumber,
+      url: article.inputSourceUrl4 || "",
       accredit: article.inputSourceAccredit4 || "",
       text: article.inputSourceText4,
       useVerbatim: article.inputSourceVerbatim4 || false,
@@ -140,6 +146,7 @@ function buildAggregateRequestFromArticle(article: Article): AggregateRequest {
   if (article.inputSourceText5) {
     sources.push({
       number: sourceNumber,
+      url: article.inputSourceUrl5 || "",
       accredit: article.inputSourceAccredit5 || "",
       text: article.inputSourceText5,
       useVerbatim: article.inputSourceVerbatim5 || false,
@@ -153,6 +160,7 @@ function buildAggregateRequestFromArticle(article: Article): AggregateRequest {
   if (article.inputSourceText6) {
     sources.push({
       number: sourceNumber,
+      url: article.inputSourceUrl6 || "",
       accredit: article.inputSourceAccredit6 || "",
       text: article.inputSourceText6,
       useVerbatim: article.inputSourceVerbatim6 || false,
@@ -167,6 +175,7 @@ function buildAggregateRequestFromArticle(article: Article): AggregateRequest {
       userId: article.createdBy || "",
       orgId: article.orgId.toString(),
       currentVersion: article.version,
+      currentVersionDecimal: article.versionDecimal,
     },
     slug: article.slug,
     headline: article.headline || "",
@@ -218,8 +227,22 @@ async function executePipelineByArticleId(articleId: string): Promise<PipelineEx
       // Build digest request from article data
       const digestRequest = buildDigestRequestFromArticle(article);
 
+      // Record the run
+      const run = await createRun({
+        articleId: articleId,
+        userId: article.createdBy || "",
+        sourceType: article.sourceType,
+        length: article.inputPresetLength,
+        costUsd: "0",
+        inputTokensUsed: 0,
+        outputTokensUsed: 0,
+      });
+
       // Execute digest pipeline
       const result = await runDigestPipeline(articleId, digestRequest);
+
+      // Update the run with the cost and tokens used
+      await updateRun(run.id, result.costUsd, result.totalInputTokens, result.totalOutputTokens);
 
       return {
         success: result.success,
@@ -231,8 +254,22 @@ async function executePipelineByArticleId(articleId: string): Promise<PipelineEx
       // Build aggregate request from article data
       const aggregateRequest = buildAggregateRequestFromArticle(article);
 
+      // Record the run
+      const run = await createRun({
+        articleId: articleId,
+        userId: article.createdBy || "",
+        sourceType: article.sourceType,
+        length: article.inputPresetLength,
+        costUsd: "0",
+        inputTokensUsed: 0,
+        outputTokensUsed: 0,
+      });
+
       // Execute aggregate pipeline
       const result = await runAggregatePipeline(articleId, aggregateRequest);
+
+      // Update the run with the cost and tokens used
+      await updateRun(run.id, result.costUsd, result.totalInputTokens, result.totalOutputTokens);
 
       return {
         success: result.success,

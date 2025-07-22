@@ -78,7 +78,6 @@ export async function signup(
     orgId: formData.get("orgId") as string,
   };
 
-  console.log("🚀 rawData:", rawData);
 
   // Validate the input data
   const validationResult = signupSchema.safeParse(rawData);
@@ -128,14 +127,14 @@ export async function signup(
     // For now, just return an error
     console.error("Database user creation failed:", dbError);
     return {
-      errors: {},
+      errors: {}, 
       message: "Failed to complete registration. Please contact support.",
     };
   }
 
   // Success - redirect to digest page
   revalidatePath("/", "layout");
-  redirect("/login?verify=true");
+  redirect("/digest");
 }
 
 /* ==========================================================================*/

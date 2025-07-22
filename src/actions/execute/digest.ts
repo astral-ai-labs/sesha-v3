@@ -61,6 +61,36 @@ if (!baseUrl) {
 }
 
 /* ==========================================================================*/
+// AI Model Pricing Map
+/* ==========================================================================*/
+
+/**
+ * MODEL_PRICING
+ *
+ * Maps AI model names to their input/output token prices (per 1M tokens, USD).
+ * Update this map if Anthropic/OpenAI pricing or model names change.
+ */
+const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  // Claude 3.5/3.7 Sonnet
+  "claude-3-5-sonnet-20240620": { input: 3, output: 15 },
+  "claude-3-5-sonnet": { input: 3, output: 15 },
+  "claude-3-7-sonnet": { input: 3, output: 15 },
+  // Claude 4 Sonnet
+  "claude-4-sonnet": { input: 3, output: 15 },
+  // Claude 4 Opus
+  "claude-4-opus": { input: 15, output: 75 },
+  // Claude 3 Opus
+  "claude-3-opus": { input: 15, output: 75 },
+  // Claude 3.5 Haiku
+  "claude-3-5-haiku": { input: 0.8, output: 4 },
+  // Claude 3 Haiku
+  "claude-3-haiku": { input: 0.25, output: 1.25 },
+  // OpenAI GPT-4o
+  "gpt-4o": { input: 2.5, output: 10 },
+  "gpt-4o-mini": { input: 0.15, output: 0.6 },
+};
+
+/* ==========================================================================*/
 // Helper Functions
 /* ==========================================================================*/
 
@@ -86,7 +116,12 @@ async function handleStepFailure(
   await updateArticleStatus(articleId, userId, "failed");
   logger.logError(`STEP_${stepNumber}_FAILED`, `Step ${stepNumber} failed, pipeline stopped`);
   await closeGlobalLogger();
-  return { success: false };
+  return { 
+    success: false, 
+    costUsd: 0, 
+    totalInputTokens: 0, 
+    totalOutputTokens: 0 
+  };
 }
 
 /**
@@ -115,6 +150,43 @@ function validatePipelineSuccess(step1Result: Step01ExtractFactQuotesResponse, s
   const finalHeadlineAndBlobs = Boolean(step3Result.headline) && step3Result.headline.length > 0 && Boolean(step3Result.blobs) && step3Result.blobs.length > 0;
 
   return allStepsSuccessful && finalArticle && finalHeadlineAndBlobs;
+}
+
+/**
+ * UsageWithModel
+ *
+ * Interface for usage objects that contain token info and model name.
+ */
+interface UsageWithModel {
+  inputTokens: number;
+  outputTokens: number;
+  model: string;
+  [key: string]: unknown;
+}
+
+/**
+ * calculateTotalTokensAndCost
+ *
+ * Computes total input tokens, output tokens, and cost for an array of usage objects.
+ * @param usageArray - Array of usage objects with token info and model
+ * @returns Object with totalInputTokens, totalOutputTokens, totalCost
+ */
+function calculateTotalTokensAndCost(usageArray: UsageWithModel[]) {
+  return usageArray.reduce(
+    (acc, usage) => {
+      const model = usage.model;
+      if (model && MODEL_PRICING[model]) {
+        const pricing = MODEL_PRICING[model];
+        acc.totalInputTokens += usage.inputTokens || 0;
+        acc.totalOutputTokens += usage.outputTokens || 0;
+        const inputCost = ((usage.inputTokens || 0) / 1_000_000) * pricing.input;
+        const outputCost = ((usage.outputTokens || 0) / 1_000_000) * pricing.output;
+        acc.totalCost += inputCost + outputCost;
+      }
+      return acc;
+    },
+    { totalInputTokens: 0, totalOutputTokens: 0, totalCost: 0 }
+  );
 }
 
 /* ==========================================================================*/
@@ -163,6 +235,15 @@ async function step01ExtractFactQuotes(articleId: string, request: DigestRequest
 
     const aiResult: Step01ExtractFactQuotesAIResponse = await response.json();
 
+        // Calculate token usage (input and output) and cost
+    const totals = calculateTotalTokensAndCost(aiResult.usage);
+
+    // Log the totals for debugging/analysis
+    console.log(`Step 01 total input tokens: ${totals.totalInputTokens}`);
+    console.log(`Step 01 total output tokens: ${totals.totalOutputTokens}`);
+    console.log(`Step 01 total cost (USD): $${totals.totalCost.toFixed(6)}`);
+
+
     // Log the API response
     if (logger) {
       logger.logStepResponse(1, "Extract Fact Quotes", aiResult);
@@ -174,6 +255,7 @@ async function step01ExtractFactQuotes(articleId: string, request: DigestRequest
       stepNumber: 1,
       success: true,
       quotes: aiResult.quotes,
+      totals,
     };
 
     // Log step completion
@@ -195,6 +277,11 @@ async function step01ExtractFactQuotes(articleId: string, request: DigestRequest
       stepNumber: 1,
       success: false,
       quotes: "",
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -241,6 +328,9 @@ async function step02SummarizeFacts(articleId: string, request: DigestRequest, l
 
     const aiResult: Step02SummarizeFactsAIResponse = await response.json();
 
+    // Calculate token usage (input and output) and cost
+    const totals = calculateTotalTokensAndCost(aiResult.usage);
+
     // Log the API response
     if (logger) {
       logger.logStepResponse(2, "Summarize Facts", aiResult);
@@ -252,6 +342,7 @@ async function step02SummarizeFacts(articleId: string, request: DigestRequest, l
       stepNumber: 2,
       success: true,
       summary: aiResult.summary,
+      totals,
     };
 
     // Log step completion
@@ -273,6 +364,11 @@ async function step02SummarizeFacts(articleId: string, request: DigestRequest, l
       stepNumber: 2,
       success: false,
       summary: "",
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -331,6 +427,9 @@ async function step03WriteHeadlineAndBlobs(articleId: string, request: DigestReq
 
     const aiResult: Step03WriteHeadlineAndBlobsAIResponse = await response.json();
 
+    // Calculate token usage (input and output) and cost
+    const totals = calculateTotalTokensAndCost(aiResult.usage);
+
     // Log the API response
     if (logger) {
       logger.logStepResponse(3, "Write Headline and Blobs", aiResult);
@@ -343,6 +442,7 @@ async function step03WriteHeadlineAndBlobs(articleId: string, request: DigestReq
       success: true,
       headline: aiResult.headline,
       blobs: aiResult.blobs,
+      totals,
     };
 
     // Log step completion
@@ -365,6 +465,11 @@ async function step03WriteHeadlineAndBlobs(articleId: string, request: DigestReq
       success: false,
       headline: "",
       blobs: [],
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -418,6 +523,9 @@ async function step04WriteArticleOutline(articleId: string, request: DigestReque
 
     const aiResult: Step04WriteArticleOutlineAIResponse = await response.json();
 
+    // Calculate token usage (input and output) and cost
+    const totals = calculateTotalTokensAndCost(aiResult.usage);
+
     // Log the API response
     if (logger) {
       logger.logStepResponse(4, "Write Article Outline", aiResult);
@@ -429,6 +537,7 @@ async function step04WriteArticleOutline(articleId: string, request: DigestReque
       stepNumber: 4,
       success: true,
       outline: aiResult.outline,
+      totals,
     };
 
     // Log step completion
@@ -450,6 +559,11 @@ async function step04WriteArticleOutline(articleId: string, request: DigestReque
       stepNumber: 4,
       success: false,
       outline: "",
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -505,6 +619,9 @@ async function step05WriteArticle(articleId: string, request: DigestRequest, ste
 
     const aiResult: Step05WriteArticleAIResponse = await response.json();
 
+    // Calculate token usage (input and output) and cost
+    const totals = calculateTotalTokensAndCost(aiResult.usage);
+
     // Log the API response
     if (logger) {
       logger.logStepResponse(5, "Write Article", aiResult);
@@ -516,6 +633,7 @@ async function step05WriteArticle(articleId: string, request: DigestRequest, ste
       stepNumber: 5,
       success: true,
       article: aiResult.article,
+      totals,
     };
 
     // Log step completion
@@ -537,6 +655,11 @@ async function step05WriteArticle(articleId: string, request: DigestRequest, ste
       stepNumber: 5,
       success: false,
       article: "",
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -585,6 +708,9 @@ async function step06ParaphraseArticle(articleId: string, request: DigestRequest
 
     const aiResult: Step06ParaphraseArticleAIResponse = await response.json();
 
+    // Calculate token usage (input and output) and cost
+    const totals = calculateTotalTokensAndCost(aiResult.usage);
+
     // Log the API response
     if (logger) {
       logger.logStepResponse(6, "Paraphrase Article", aiResult);
@@ -596,6 +722,7 @@ async function step06ParaphraseArticle(articleId: string, request: DigestRequest
       stepNumber: 6,
       success: true,
       paraphrasedArticle: aiResult.paraphrasedArticle,
+      totals,
     };
 
     // Log step completion
@@ -617,6 +744,11 @@ async function step06ParaphraseArticle(articleId: string, request: DigestRequest
       stepNumber: 6,
       success: false,
       paraphrasedArticle: "",
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -661,6 +793,9 @@ async function step07SentencePerLineAttribution(articleId: string, request: Dige
 
     const aiResult: Step07SentencePerLineAttributionAIResponse = await response.json();
 
+    // Calculate token usage (input and output) and cost
+    const totals = calculateTotalTokensAndCost(aiResult.usage);
+
     // Log the API response
     if (logger) {
       logger.logStepResponse(7, "Sentence Per Line Attribution", aiResult);
@@ -672,6 +807,7 @@ async function step07SentencePerLineAttribution(articleId: string, request: Dige
       stepNumber: 7,
       success: true,
       formattedArticle: aiResult.formattedArticle,
+      totals,
     };
 
     // Log step completion
@@ -693,6 +829,11 @@ async function step07SentencePerLineAttribution(articleId: string, request: Dige
       stepNumber: 7,
       success: false,
       formattedArticle: "",
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -751,6 +892,7 @@ async function stepVerbatim(
       stepNumber: 8,
       success: true,
       formattedArticle: aiResult.formattedArticle || "",
+      usage: aiResult.usage,
     };
 
     // Log step completion
@@ -772,6 +914,7 @@ async function stepVerbatim(
       stepNumber: 8,
       success: false,
       formattedArticle: "",
+      usage: [],
     };
   }
 }
@@ -801,14 +944,28 @@ async function runDigestPipeline(articleId: string, request: DigestRequest): Pro
   }
 
   // Initialize pipeline logger
-  const logger = createPipelineLogger(`${request.metadata.userId}-${request.slug}`);
+  const logger = createPipelineLogger(`${request.metadata.userId}-${request.slug}`, 'digest');
 
   // Also set as global logger for route handlers to use
-  initializeGlobalLogger(`${request.metadata.userId}-${request.slug}`);
+  initializeGlobalLogger(`${request.metadata.userId}-${request.slug}`, 'digest');
+
+  // Initialize cumulative tracking variables
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let totalCost = 0;
 
   try {
-    // Log initial request
-    logger.logInitialRequest(request);
+    // Log initial request with complete data
+    logger.logInitialRequest({
+      requestType: 'DigestRequest',
+      slug: request.slug,
+      headline: request.headline,
+      source: request.source,
+      instructions: request.instructions,
+      metadata: request.metadata,
+      isVerbatim: request.source.verbatim,
+      fullRequest: request // Include complete request object
+    });
 
     // Step 1: Extract Fact Quotes
     const step1Result = await step01ExtractFactQuotes(articleId, request, logger);
@@ -816,6 +973,11 @@ async function runDigestPipeline(articleId: string, request: DigestRequest): Pro
     if (!step1Result.success) {
       return await handleStepFailure(1, articleId, request.metadata.userId, logger);
     }
+
+    // Accumulate totals from step 1
+    totalInputTokens += step1Result.totals.totalInputTokens;
+    totalOutputTokens += step1Result.totals.totalOutputTokens;
+    totalCost += step1Result.totals.totalCost;
 
     // Update status to 10% after step 1
     await updateArticleStatus(articleId, request.metadata.userId, "10%");
@@ -827,12 +989,22 @@ async function runDigestPipeline(articleId: string, request: DigestRequest): Pro
       return await handleStepFailure(2, articleId, request.metadata.userId, logger);
     }
 
+    // Accumulate totals from step 2
+    totalInputTokens += step2Result.totals.totalInputTokens;
+    totalOutputTokens += step2Result.totals.totalOutputTokens;
+    totalCost += step2Result.totals.totalCost;
+
     // Step 3: Write Headline and Blobs
     const step3Result = await step03WriteHeadlineAndBlobs(articleId, request, step1Result, step2Result, logger);
     
     if (!step3Result.success) {
       return await handleStepFailure(3, articleId, request.metadata.userId, logger);
     }
+
+    // Accumulate totals from step 3
+    totalInputTokens += step3Result.totals.totalInputTokens;
+    totalOutputTokens += step3Result.totals.totalOutputTokens;
+    totalCost += step3Result.totals.totalCost;
 
     // Update status to 25% after step 3
     await updateArticleStatus(articleId, request.metadata.userId, "25%");
@@ -847,6 +1019,12 @@ async function runDigestPipeline(articleId: string, request: DigestRequest): Pro
         return await handleStepFailure(8, articleId, request.metadata.userId, logger);
       }
 
+      // Calculate verbatim totals
+      const verbatimTotals = calculateTotalTokensAndCost(verbatimResult.usage);
+      totalInputTokens += verbatimTotals.totalInputTokens;
+      totalOutputTokens += verbatimTotals.totalOutputTokens;
+      totalCost += verbatimTotals.totalCost;
+
       await updateArticleStatus(articleId, request.metadata.userId, "90%");
 
       // Validate verbatim pipeline success
@@ -858,6 +1036,9 @@ async function runDigestPipeline(articleId: string, request: DigestRequest): Pro
       // Build verbatim response
       const response: PipelineResponse = {
         success: isSuccessful,
+        costUsd: totalCost,
+        totalInputTokens,
+        totalOutputTokens,
         step_one_extract_fact_quotes: step1Result,
         step_two_summarize_facts: step2Result,
         step_three_write_headline_and_blobs: step3Result,
@@ -889,12 +1070,22 @@ async function runDigestPipeline(articleId: string, request: DigestRequest): Pro
         return await handleStepFailure(4, articleId, request.metadata.userId, logger);
       }
 
+      // Accumulate totals from step 4
+      totalInputTokens += step4Result.totals.totalInputTokens;
+      totalOutputTokens += step4Result.totals.totalOutputTokens;
+      totalCost += step4Result.totals.totalCost;
+
       // Step 5: Write Article
       const step5Result = await step05WriteArticle(articleId, request, step2Result, step3Result, step4Result, logger);
       
       if (!step5Result.success) {
         return await handleStepFailure(5, articleId, request.metadata.userId, logger);
       }
+
+      // Accumulate totals from step 5
+      totalInputTokens += step5Result.totals.totalInputTokens;
+      totalOutputTokens += step5Result.totals.totalOutputTokens;
+      totalCost += step5Result.totals.totalCost;
 
       // Update status to 50% after step 5
       await updateArticleStatus(articleId, request.metadata.userId, "50%");
@@ -906,6 +1097,11 @@ async function runDigestPipeline(articleId: string, request: DigestRequest): Pro
         return await handleStepFailure(6, articleId, request.metadata.userId, logger);
       }
 
+      // Accumulate totals from step 6
+      totalInputTokens += step6Result.totals.totalInputTokens;
+      totalOutputTokens += step6Result.totals.totalOutputTokens;
+      totalCost += step6Result.totals.totalCost;
+
       // Update status to 75% after step 6
       await updateArticleStatus(articleId, request.metadata.userId, "75%");
 
@@ -915,6 +1111,11 @@ async function runDigestPipeline(articleId: string, request: DigestRequest): Pro
       if (!step7Result.success) {
         return await handleStepFailure(7, articleId, request.metadata.userId, logger);
       }
+
+      // Accumulate totals from step 7
+      totalInputTokens += step7Result.totals.totalInputTokens;
+      totalOutputTokens += step7Result.totals.totalOutputTokens;
+      totalCost += step7Result.totals.totalCost;
 
       await updateArticleStatus(articleId, request.metadata.userId, "90%");
 
@@ -927,6 +1128,9 @@ async function runDigestPipeline(articleId: string, request: DigestRequest): Pro
       // Build response
       const response: PipelineResponse = {
         success: isSuccessful,
+        costUsd: totalCost,
+        totalInputTokens,
+        totalOutputTokens,
         step_one_extract_fact_quotes: step1Result,
         step_two_summarize_facts: step2Result,
         step_three_write_headline_and_blobs: step3Result,
@@ -972,6 +1176,9 @@ async function runDigestPipeline(articleId: string, request: DigestRequest): Pro
 
     return {
       success: false,
+      costUsd: totalCost,
+      totalInputTokens,
+      totalOutputTokens,
     };
   }
 }

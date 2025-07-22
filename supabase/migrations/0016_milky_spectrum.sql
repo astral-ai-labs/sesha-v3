@@ -1,0 +1,2 @@
+-- DROP INDEX "articles_org_slug_version_idx";--> statement-breakpoint
+-- CREATE UNIQUE INDEX "articles_org_slug_version_decimal_idx" ON "articles" USING btree ("org_id","slug","version_decimal");

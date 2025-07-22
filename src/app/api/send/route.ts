@@ -1,4 +1,4 @@
-import { ArticleComplete } from '@/components/email/article-complete';
+import { ArticleEmailExport } from '@/components/email/article-email-export';
 import { Resend } from 'resend';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -19,6 +19,10 @@ interface SendEmailRequest {
   name: string;
   slug: string;
   version: number;
+  versionDecimal: string;
+  content?: string;
+  articleHtml?: string;
+  blobs?: string;
 }
 
 // ==========================================================================
@@ -51,12 +55,25 @@ export async function POST(request: NextRequest) {
     console.log("Name: ", body.name);
     console.log("Slug: ", body.slug);
     console.log("Version: ", body.version);
+    console.log("Version Decimal: ", body.versionDecimal);
+    console.log("Content: ", body.content);
+    console.log("Article HTML length: ", body.articleHtml?.length);
+    console.log("Blobs: ", body.blobs);
 
     const { data, error } = await resend.emails.send({
       from: 'updates@updates.sesha-systems.com',
       to: body.to,
       subject: body.subject,
-      react: ArticleComplete({ href: body.href, name: body.name, slug: body.slug, version: body.version }),
+      react: ArticleEmailExport({ 
+        recipientName: 'User', // We don't have recipient name from the form
+        senderName: body.name,
+        articleHeadline: body.subject,
+        articleSlug: body.slug,
+        versionDecimal: body.versionDecimal,
+        content: body.content,
+        articleHtml: body.articleHtml,
+        blobs: body.blobs
+      }),
     });
 
     if (error) {

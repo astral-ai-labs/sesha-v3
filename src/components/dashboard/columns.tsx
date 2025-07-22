@@ -23,8 +23,8 @@ import { Button } from "@/components/ui/button";
 export interface DashboardRowData {
   organizationName: string;
   totalRuns: number;
-  totalCost: number;
-  averageCostPerRun: number;
+  totalCostUsd: number;
+  avgCostPerRun: number;
 }
 
 /* ==========================================================================*/
@@ -46,7 +46,7 @@ const columns: ColumnDef<DashboardRowData>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <div className="truncate max-w-[250px] font-medium">
+      <div className="flex justify-center items-center w-full h-full text-center font-medium">
         {row.getValue<string>("organizationName")}
       </div>
     ),
@@ -62,7 +62,7 @@ const columns: ColumnDef<DashboardRowData>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="h-auto p-0 font-medium"
       >
-        Total Runs <ArrowUpDown className="ml-1 h-4 w-4" />
+        Total Articles <ArrowUpDown className="ml-1 h-4 w-4" />
       </Button>
     ),
     cell: ({ row }) => (
@@ -75,41 +75,47 @@ const columns: ColumnDef<DashboardRowData>[] = [
 
   /* ----------------------------- Total Cost ----------------------------- */
   {
-    accessorKey: "totalCost",
+    accessorKey: "totalCostUsd",
     header: ({ column }) => (
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="h-auto p-0 font-medium"
       >
-        Total Cost <ArrowUpDown className="ml-1 h-4 w-4" />
+        Total Cost (USD) <ArrowUpDown className="ml-1 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => (
-      <span className="font-mono text-green-600">
-        ${row.getValue<number>("totalCost").toFixed(2)}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const value = row.getValue<number>("totalCostUsd");
+      return (
+        <span className="font-mono text-green-600">
+          ${typeof value === "number" && !isNaN(value) ? value.toFixed(2) : "0.00"}
+        </span>
+      );
+    },
     size: 130,
   },
 
   /* ------------------------ Average Cost Per Run ------------------------ */
   {
-    accessorKey: "averageCostPerRun",
+    accessorKey: "avgCostPerRun",
     header: ({ column }) => (
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="h-auto p-0 font-medium"
       >
-        Avg Cost/Run <ArrowUpDown className="ml-1 h-4 w-4" />
+        Average Cost Per Article <ArrowUpDown className="ml-1 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => (
-      <span className="font-mono text-blue-600">
-        ${row.getValue<number>("averageCostPerRun").toFixed(4)}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const value = row.getValue<number>("avgCostPerRun");
+      return (
+        <span className="font-mono text-blue-600">
+          ${typeof value === "number" && !isNaN(value) ? value.toFixed(4) : "0.0000"}
+        </span>
+      );
+    },
     size: 150,
   },
 ];

@@ -195,7 +195,7 @@ async function processSourcesInParallel(sources: Source[], logger?: PipelineLogg
     }
 
     // Generate text for this source using messages approach
-    const { text: content } = await generateText({
+    const { text: content, usage } = await generateText({
       model: MODEL,
       system: finalSystemPrompt,
       messages: [
@@ -215,6 +215,12 @@ async function processSourcesInParallel(sources: Source[], logger?: PipelineLogg
     return {
       ...source,
       factsBitSplitting2: content,
+      usage: [{
+        inputTokens: usage?.promptTokens ?? 0,
+        outputTokens: usage?.completionTokens ?? 0,
+        model: MODEL.modelId,
+        ...usage
+      }],
     };
   });
 
@@ -241,7 +247,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-step02-${Date.now()}`);
+    const logger = createPipelineLogger(`route-step02-${Date.now()}`, 'aggregate');
 
     // Process all sources in parallel
     const processedSources = await processSourcesInParallel(body.sources, logger);

@@ -98,17 +98,22 @@ export const articles = pgTable(
       .references(() => organizations.id)
       .notNull(),
     slug: varchar("slug", { length: 255 }).notNull(),
-    version: integer("version").default(1).notNull(), // starts at 1, increments
+    version: integer("version").default(1).notNull(), // legacy integer version for backward compatibility
+    versionDecimal: numeric("version_decimal", { precision: 4, scale: 2 }).default("1.00").notNull(), // AI versions: x.00, human edits: x.01, x.02, etc.
 
     // ─────────────── Output snapshot ────────
     headline: varchar("headline", { length: 500 }),
     blob: text("blob"),
     content: text("content"),
+    richContent: text("rich_content"),
+
+
 
     // ─────────────── Input snapshot ────────
 
     // Input (Source Material) - up to 6 sources
     inputSourceText1: text("input_source_text_1").notNull(),
+    inputSourceUrl1: text("input_source_url_1").default(""),
     inputSourceDescription1: text("input_source_description_1").default("").notNull(),
     inputSourceAccredit1: text("input_source_accredit_1").default("").notNull(),
     inputSourceVerbatim1: boolean("input_source_verbatim_1").default(false).notNull(),
@@ -116,6 +121,7 @@ export const articles = pgTable(
     inputSourceBase1: boolean("input_source_base_1").default(false),
 
     inputSourceText2: text("input_source_text_2"),
+    inputSourceUrl2: text("input_source_url_2").default(""),
     inputSourceDescription2: text("input_source_description_2").default(""),
     inputSourceAccredit2: text("input_source_accredit_2").default(""),
     inputSourceVerbatim2: boolean("input_source_verbatim_2").default(false),
@@ -123,6 +129,7 @@ export const articles = pgTable(
     inputSourceBase2: boolean("input_source_base_2").default(false),
 
     inputSourceText3: text("input_source_text_3"),
+    inputSourceUrl3: text("input_source_url_3").default(""),
     inputSourceDescription3: text("input_source_description_3").default(""),
     inputSourceAccredit3: text("input_source_accredit_3").default(""),
     inputSourceVerbatim3: boolean("input_source_verbatim_3").default(false),
@@ -131,6 +138,7 @@ export const articles = pgTable(
 
 
     inputSourceText4: text("input_source_text_4"),
+    inputSourceUrl4: text("input_source_url_4").default(""),
     inputSourceDescription4: text("input_source_description_4").default(""),
     inputSourceAccredit4: text("input_source_accredit_4").default(""),
     inputSourceVerbatim4: boolean("input_source_verbatim_4").default(false),
@@ -138,6 +146,7 @@ export const articles = pgTable(
     inputSourceBase4: boolean("input_source_base_4").default(false),
 
     inputSourceText5: text("input_source_text_5"),
+    inputSourceUrl5: text("input_source_url_5").default(""),
     inputSourceDescription5: text("input_source_description_5").default(""),
     inputSourceAccredit5: text("input_source_accredit_5").default(""),
     inputSourceVerbatim5: boolean("input_source_verbatim_5").default(false),
@@ -145,6 +154,7 @@ export const articles = pgTable(
     inputSourceBase5: boolean("input_source_base_5").default(false),
 
     inputSourceText6: text("input_source_text_6"),
+    inputSourceUrl6: text("input_source_url_6").default(""),
     inputSourceDescription6: text("input_source_description_6").default(""),
     inputSourceAccredit6: text("input_source_accredit_6").default(""),
     inputSourceVerbatim6: boolean("input_source_verbatim_6").default(false),
@@ -166,7 +176,7 @@ export const articles = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [uniqueIndex("articles_org_slug_version_idx").on(table.orgId, table.slug, table.version), index("articles_org_slug_idx").on(table.orgId, table.slug), index("articles_status_idx").on(table.status)]
+  (table) => [uniqueIndex("articles_org_slug_version_decimal_idx").on(table.orgId, table.slug, table.versionDecimal), index("articles_org_slug_idx").on(table.orgId, table.slug), index("articles_status_idx").on(table.status)]
 );
 
 /* -- 5. Runs (spend & usage events) ---------------------------------------*/
@@ -179,15 +189,16 @@ export const runs = pgTable(
     articleId: uuid("article_id").references(() => articles.id),
     userId: uuid("user_id").references(() => users.id),
 
-    // What kind of run generated this cost?
-    runType: runTypeEnum("run_type").notNull(),
+    // What kind of source generated this run?
+    sourceType: sourceTypeEnum("source_type").notNull(),
 
     // Snapshot fields for grouping
     length: lengthEnum("length").notNull(),
 
     // Financial / usage metrics
     costUsd: numeric("cost_usd", { precision: 12, scale: 6 }).notNull(),
-    tokensUsed: integer("tokens_used"),
+    inputTokensUsed: integer("input_tokens_used"),
+    outputTokensUsed: integer("output_tokens_used"),
 
     // Timestamp for date-range filtering
     createdAt: timestamp("created_at").defaultNow().notNull(),
