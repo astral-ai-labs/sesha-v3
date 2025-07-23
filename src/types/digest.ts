@@ -70,11 +70,22 @@ export interface Step01ExtractFactQuotesRequest {
 /** AI-only response from the route (no article management) */
 export interface Step01ExtractFactQuotesAIResponse {
   quotes: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step01ExtractFactQuotesResponse extends BaseStepResponse {
   quotes: string;
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
 }
 
 /* ==========================================================================*/
@@ -92,11 +103,22 @@ export interface Step02SummarizeFactsRequest {
 /** AI-only response from the route (no article management) */
 export interface Step02SummarizeFactsAIResponse {
   summary: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step02SummarizeFactsResponse extends BaseStepResponse {
   summary: string;
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
 }
 
 /* ==========================================================================*/
@@ -120,12 +142,23 @@ export interface Step03WriteHeadlineAndBlobsRequest {
 export interface Step03WriteHeadlineAndBlobsAIResponse {
   headline: string;
   blobs: string[];
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step03WriteHeadlineAndBlobsResponse extends BaseStepResponse {
   headline: string;
   blobs: string[];
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
 }
 
 /* ==========================================================================*/
@@ -148,11 +181,22 @@ export interface Step04WriteArticleOutlineRequest {
 /** AI-only response from the route (no article management) */
 export interface Step04WriteArticleOutlineAIResponse {
   outline: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step04WriteArticleOutlineResponse extends BaseStepResponse {
   outline: string;
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
 }
 
 /* ==========================================================================*/
@@ -181,11 +225,22 @@ export interface Step05WriteArticleRequest {
 /** AI-only response from the route (no article management) */
 export interface Step05WriteArticleAIResponse {
   article: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step05WriteArticleResponse extends BaseStepResponse {
   article: string;
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
 }
 
 /* ==========================================================================*/
@@ -205,11 +260,22 @@ export interface Step06ParaphraseArticleRequest {
 /** AI-only response from the route (no article management) */
 export interface Step06ParaphraseArticleAIResponse {
   paraphrasedArticle: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step06ParaphraseArticleResponse extends BaseStepResponse {
   paraphrasedArticle: string;
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
 }
 
 /* ==========================================================================*/
@@ -224,11 +290,22 @@ export interface Step07SentencePerLineAttributionRequest {
 // /** AI-only response from the route (no article management) */
 export interface Step07SentencePerLineAttributionAIResponse {
   formattedArticle: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step07SentencePerLineAttributionResponse extends BaseStepResponse {  
   formattedArticle: string;
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  };
 }
 
 
@@ -242,6 +319,12 @@ export interface StepVerbatimRequest {
 
 export interface StepVerbatimResponse extends BaseStepResponse {
   formattedArticle: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
 }
 
 /* ==========================================================================*/
@@ -251,6 +334,9 @@ export interface StepVerbatimResponse extends BaseStepResponse {
 /** Complete pipeline response with all step results */
 export interface PipelineResponse {
   success: boolean;
+  costUsd: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
   step_one_extract_fact_quotes?: Step01ExtractFactQuotesResponse;
   step_two_summarize_facts?: Step02SummarizeFactsResponse;
   step_three_write_headline_and_blobs?: Step03WriteHeadlineAndBlobsResponse;

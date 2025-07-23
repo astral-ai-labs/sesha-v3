@@ -1,1 +1,1 @@
-ALTER TABLE "articles" ADD COLUMN "rich_content" text;
+-- ALTER TABLE "articles" ADD COLUMN "rich_content" text;

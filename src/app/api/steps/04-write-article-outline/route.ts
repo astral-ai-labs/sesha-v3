@@ -284,7 +284,7 @@ You must follow these important mandatory editor instructions:
     logger.logStepPrompts(4, "Write Article Outline", systemPrompt, userPrompt);
 
     // Generate structured object using AI SDK
-    const { text: outline } = await generateText({
+    const { text: outline, usage } = await generateText({
       model,
       system: systemPrompt,
       messages: [
@@ -304,6 +304,14 @@ You must follow these important mandatory editor instructions:
     // Build response - only AI data
     const response: Step04WriteArticleOutlineAIResponse = {
       outline: outline,
+      usage: [
+        {
+          inputTokens: usage?.promptTokens ?? 0,
+          outputTokens: usage?.completionTokens ?? 0,
+          model: model.modelId,
+          ...usage
+        },
+      ],
     };
 
     logger.logStepResponse(4, "Write Article Outline", response);
@@ -317,6 +325,7 @@ You must follow these important mandatory editor instructions:
 
     const errorResponse: Step04WriteArticleOutlineAIResponse = {
       outline: "",
+      usage: [],
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

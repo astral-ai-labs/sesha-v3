@@ -621,7 +621,7 @@ export async function POST(request: NextRequest) {
     logger.logStepPrompts(5, "Write Article", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
 
     // Generate text using messages approach
-    const { text: article } = await generateText({
+    const { text: article, usage } = await generateText({
       model: MODEL,
       system: finalSystemPrompt,
       messages: [
@@ -641,6 +641,14 @@ export async function POST(request: NextRequest) {
     // Build response
     const response: Step05WriteArticleAIResponse = {
       article,
+      usage: [
+        {
+          inputTokens: usage?.promptTokens ?? 0,
+          outputTokens: usage?.completionTokens ?? 0,
+          model: MODEL.modelId,
+          ...usage
+        },
+      ],
     };
 
     logger.logStepResponse(5, "Write Article", response);
@@ -654,6 +662,7 @@ export async function POST(request: NextRequest) {
 
     const errorResponse: Step05WriteArticleAIResponse = {
       article: "",
+      usage: [],
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

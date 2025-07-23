@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
     logger.logStepPrompts(7, "Rewrite Article 2", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
 
     // Generate text using messages approach
-    const { text: rewrittenArticle } = await generateText({
+    const { text: rewrittenArticle, usage } = await generateText({
       model: MODEL,
       system: finalSystemPrompt,
       messages: [
@@ -192,6 +192,14 @@ export async function POST(request: NextRequest) {
     // Build response
     const response: Step07RewriteArticle2AIResponse = {
       rewrittenArticle,
+      usage: [
+        {
+          inputTokens: usage?.promptTokens ?? 0,
+          outputTokens: usage?.completionTokens ?? 0,
+          model: MODEL.modelId,
+          ...usage
+        },
+      ],
     };
 
     logger.logStepResponse(7, "Rewrite Article 2", response);
@@ -205,6 +213,7 @@ export async function POST(request: NextRequest) {
 
     const errorResponse: Step07RewriteArticle2AIResponse = {
       rewrittenArticle: "",
+      usage: [],
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

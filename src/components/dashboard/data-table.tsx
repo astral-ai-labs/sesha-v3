@@ -30,15 +30,6 @@ import {
 } from "@tanstack/react-table";
 
 // Local Modules ------------------------------------------------------------
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
 import {
   Table,
   TableHeader,
@@ -56,10 +47,18 @@ import { DashboardRowData, columns } from "./columns";
 interface DashboardDataTableProps {
   /** Array of dashboard row data to render. */
   data: DashboardRowData[];
-  /** Available users for filtering. */
-  availableUsers?: Array<{ id: string; name: string }>;
   /** Organization name for summary display. */
   organizationName?: string;
+  /** Optional summary statistics (total runs, total cost, avg cost per run) */
+  summary?: {
+    totalRuns: number;
+    totalCostUsd: number;
+    avgCostPerRun: number;
+  };
+  /** Optional filters for future use */
+  filters?: unknown;
+  /** Optional users for future use */
+  users?: Array<{ id: string; name: string }>;
   /** Date range filter handlers */
   onDateRangeChange?: (fromDate: string, toDate: string) => void;
   /** User filter handler */
@@ -87,11 +86,7 @@ interface DashboardDataTableProps {
  */
 function DashboardDataTable({
   data,
-  availableUsers = [],
-  organizationName,
-  onDateRangeChange,
-  onUserFilterChange,
-  onLengthFilterChange,
+  summary,
 }: DashboardDataTableProps) {
   /* -------------------------------- State -------------------------------- */
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -100,12 +95,6 @@ function DashboardDataTable({
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
-
-  // Filter states
-  const [fromDate, setFromDate] = React.useState("");
-  const [toDate, setToDate] = React.useState("");
-  const [selectedUser, setSelectedUser] = React.useState("");
-  const [selectedLength, setSelectedLength] = React.useState("");
 
   /* ---------------------------- Table instance --------------------------- */
   const table = useReactTable({
@@ -125,103 +114,27 @@ function DashboardDataTable({
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  /* ----------------------- Event Handlers -------------------------------- */
-
-  const handleFromDateChange = (value: string) => {
-    setFromDate(value);
-    if (onDateRangeChange) {
-      onDateRangeChange(value, toDate);
-    }
-  };
-
-  const handleToDateChange = (value: string) => {
-    setToDate(value);
-    if (onDateRangeChange) {
-      onDateRangeChange(fromDate, value);
-    }
-  };
-
-  const handleUserFilterChange = (value: string) => {
-    const userId = value === "all" ? "" : value;
-    setSelectedUser(userId);
-    if (onUserFilterChange) {
-      onUserFilterChange(userId);
-    }
-  };
-
-  const handleLengthFilterChange = (value: string) => {
-    const length = value === "all" ? "" : value;
-    setSelectedLength(length);
-    if (onLengthFilterChange) {
-      onLengthFilterChange(length);
-    }
-  };
-
   /* ----------------------------- Render ---------------------------------- */
 
   return (
     <div className="w-full space-y-4">
-      {/* Filters */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        {/* Left side - User and Length filters */}
-        <div className="flex items-center gap-3">
-          {/* User filter */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-muted-foreground">User:</label>
-            <Select value={selectedUser} onValueChange={handleUserFilterChange}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All Users" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Users</SelectItem>
-                {availableUsers.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {/* Summary Bar --- */}
+      {summary && (
+        <div className="flex flex-wrap gap-6 items-center bg-muted/50 border border-border rounded-md px-4 py-2 mb-2">
+          <div className="text-sm font-medium text-muted-foreground">
+            <span className="font-semibold">Summary:</span>
           </div>
-
-          {/* Length filter */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-muted-foreground">Length:</label>
-            <Select value={selectedLength} onValueChange={handleLengthFilterChange}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="All Lengths" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Lengths</SelectItem>
-                <SelectItem value="100-250">100-250</SelectItem>
-                <SelectItem value="400-550">400-550</SelectItem>
-                <SelectItem value="700-850">700-850</SelectItem>
-                <SelectItem value="1000-1200">1000-1200</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="text-sm">
+            <span className="font-medium">Total Runs:</span> {summary.totalRuns.toLocaleString()}
+          </div>
+          <div className="text-sm">
+            <span className="font-medium">Total Cost:</span> ${summary.totalCostUsd.toFixed(2)}
+          </div>
+          <div className="text-sm">
+            <span className="font-medium">Avg Cost/Run:</span> ${summary.avgCostPerRun.toFixed(4)}
           </div>
         </div>
-
-        {/* Right side - Date Range Filters */}
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-muted-foreground">Date Range:</label>
-          <Input
-            type="date"
-            value={fromDate}
-            onChange={(e) => handleFromDateChange(e.target.value)}
-            placeholder="From date"
-            className="w-[140px]"
-          />
-          <span className="text-sm text-muted-foreground">to</span>
-          <Input
-            type="date"
-            value={toDate}
-            onChange={(e) => handleToDateChange(e.target.value)}
-            placeholder="To date"
-            className="w-[140px]"
-          />
-        </div>
-      </div>
-
+      )}
       {/* Data table */}
       <div className="rounded-md border overflow-x-auto">
         <Table className="min-w-[700px]">
@@ -265,36 +178,8 @@ function DashboardDataTable({
           </TableBody>
         </Table>
       </div>
-
       {/* Pagination */}
-      <div className="flex items-center justify-between py-4">
-        {/* Summary text */}
-        {organizationName && (
-          <div className="text-sm text-muted-foreground">
-            Showing dashboard metrics for {organizationName}
-          </div>
-        )}
-        
-        {/* Pagination buttons */}
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      {/* Remove the Previous and Next pagination buttons below the table */}
     </div>
   );
 }

@@ -189,15 +189,16 @@ export const runs = pgTable(
     articleId: uuid("article_id").references(() => articles.id),
     userId: uuid("user_id").references(() => users.id),
 
-    // What kind of run generated this cost?
-    runType: runTypeEnum("run_type").notNull(),
+    // What kind of source generated this run?
+    sourceType: sourceTypeEnum("source_type").notNull(),
 
     // Snapshot fields for grouping
     length: lengthEnum("length").notNull(),
 
     // Financial / usage metrics
     costUsd: numeric("cost_usd", { precision: 12, scale: 6 }).notNull(),
-    tokensUsed: integer("tokens_used"),
+    inputTokensUsed: integer("input_tokens_used"),
+    outputTokensUsed: integer("output_tokens_used"),
 
     // Timestamp for date-range filtering
     createdAt: timestamp("created_at").defaultNow().notNull(),

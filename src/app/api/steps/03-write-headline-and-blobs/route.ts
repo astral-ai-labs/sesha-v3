@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
     logger.logStepPrompts(3, "Write Headline and Blobs", systemPrompt, userPrompt);
 
     // Generate text using AI SDK
-    const { text: rawHeadlineAndBlobs } = await generateText({
+    const { text: rawHeadlineAndBlobs, usage: anthropicUsage } = await generateText({
       model,
       system: systemPrompt,
       messages: [
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
     console.log("which one is the winner", body.headline ? body.headline : rawHeadlineAndBlobs);
 
     // Strucure with OpenAI
-    const { object: structuredHeadlineAndBlobs } = await generateObject({
+    const { object: structuredHeadlineAndBlobs, usage: openaiUsage } = await generateObject({
       model: structuredModel,
       system: "Do not change any word in the output. Just return the headline and blobs in the specified format. Do not add any other text or commentary. Verbatim.",
       prompt: "Output the headline and blobs in the specified format. Here is the raw output from the AI: " + rawHeadlineAndBlobs,
@@ -232,6 +232,20 @@ export async function POST(request: NextRequest) {
     const response: Step03WriteHeadlineAndBlobsAIResponse = {
       headline: body.headline ? body.headline : structuredHeadlineAndBlobs.headline,
       blobs: structuredHeadlineAndBlobs.blobs,
+      usage: [
+        {
+          inputTokens: anthropicUsage?.promptTokens ?? 0,
+          outputTokens: anthropicUsage?.completionTokens ?? 0,
+          model: model.modelId,
+          ...anthropicUsage
+        },
+        {
+          inputTokens: openaiUsage?.promptTokens ?? 0,
+          outputTokens: openaiUsage?.completionTokens ?? 0,
+          model: structuredModel.modelId,
+          ...openaiUsage
+        },
+      ],
     };
 
     // Close the logger to ensure logs are flushed
@@ -244,6 +258,7 @@ export async function POST(request: NextRequest) {
     const errorResponse: Step03WriteHeadlineAndBlobsAIResponse = {
       headline: "",
       blobs: [],
+      usage: [],
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

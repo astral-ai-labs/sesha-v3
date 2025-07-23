@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     logger.logStepPrompts(1, "Extract Fact Quotes", systemPrompt, userPrompt);
 
     // Generate structured object using AI SDK
-    const { text: quotes } = await generateText({
+    const { text: quotes, usage } = await generateText({
       model,
       system: systemPrompt,
       messages: [
@@ -119,6 +119,14 @@ export async function POST(request: NextRequest) {
     // Build response - only AI data
     const response: Step01ExtractFactQuotesAIResponse = {
       quotes,
+      usage: [
+        {
+          inputTokens: usage?.promptTokens ?? 0,
+          outputTokens: usage?.completionTokens ?? 0,
+          model: model.modelId,
+          ...usage
+        },
+      ],
     };
 
     logger.logStepResponse(1, "Extract Fact Quotes", response);
@@ -132,6 +140,7 @@ export async function POST(request: NextRequest) {
 
     const errorResponse: Step01ExtractFactQuotesAIResponse = {
       quotes: "",
+      usage: [],
     };
 
     return NextResponse.json(errorResponse, { status: 500 }); 

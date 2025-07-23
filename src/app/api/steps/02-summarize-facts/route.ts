@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     logger.logStepPrompts(2, "Summarize Facts", systemPrompt, userPrompt);
 
     // Generate structured object using AI SDK
-    const { text: summary } = await generateText({
+    const { text: summary, usage } = await generateText({
       model,
       system: systemPrompt,
       messages: [
@@ -141,6 +141,14 @@ export async function POST(request: NextRequest) {
     // Build response - only AI data
     const response: Step02SummarizeFactsAIResponse = {
       summary: summary,
+      usage: [
+        {
+          inputTokens: usage?.promptTokens ?? 0,
+          outputTokens: usage?.completionTokens ?? 0,
+          model: model.modelId,
+          ...usage
+        },
+      ],
     };
 
     logger.logStepResponse(2, "Summarize Facts", response);
@@ -154,6 +162,7 @@ export async function POST(request: NextRequest) {
 
     const errorResponse: Step02SummarizeFactsAIResponse = {
       summary: "",
+      usage: [],
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

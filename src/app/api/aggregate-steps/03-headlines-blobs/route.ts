@@ -179,6 +179,7 @@ export async function POST(request: NextRequest) {
     const validationError = validateRequest(Boolean(body.noOfBlobs) && body.noOfBlobs >= 1, {
       headline: "",
       blobs: [],
+      usage: [],
     } as Step03HeadlinesBlobsAIResponse);
     if (validationError) return validationError;
 
@@ -196,7 +197,7 @@ export async function POST(request: NextRequest) {
     logger.logStepPrompts(3, "Headlines Blobs", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
 
     // Generate text using messages approach
-    const { text: rawHeadlineAndBlobs } = await generateText({
+    const { text: rawHeadlineAndBlobs, usage: anthropicUsage } = await generateText({
       model: MODEL,
       system: finalSystemPrompt,
       messages: [
@@ -217,7 +218,7 @@ export async function POST(request: NextRequest) {
     console.log("which one is the winner", body.headlineSuggestion ? body.headlineSuggestion : rawHeadlineAndBlobs);
 
     // Structure with OpenAI
-    const { object: structuredHeadlineAndBlobs } = await generateObject({
+    const { object: structuredHeadlineAndBlobs, usage: openaiUsage } = await generateObject({
       model: structuredModel,
       system: "Do not change any word in the output. Just return the headline and blobs in the specified format. Do not add any other text or commentary. Verbatim.",
       prompt: "Output the headline and blobs in the specified format. Here is the raw output from the AI: " + rawHeadlineAndBlobs,
@@ -233,6 +234,20 @@ export async function POST(request: NextRequest) {
     const response: Step03HeadlinesBlobsAIResponse = {
       headline: outputHeadline,
       blobs: structuredHeadlineAndBlobs.blobs,
+      usage: [
+        {
+          inputTokens: anthropicUsage?.promptTokens ?? 0,
+          outputTokens: anthropicUsage?.completionTokens ?? 0,
+          model: MODEL.modelId,
+          ...anthropicUsage
+        },
+        {
+          inputTokens: openaiUsage?.promptTokens ?? 0,
+          outputTokens: openaiUsage?.completionTokens ?? 0,
+          model: structuredModel.modelId,
+          ...openaiUsage
+        },
+      ]
     };
 
     logger.logStepResponse(3, "Headlines Blobs", response);
@@ -247,6 +262,7 @@ export async function POST(request: NextRequest) {
     const errorResponse: Step03HeadlinesBlobsAIResponse = {
       headline: "",
       blobs: [],
+      usage: [],
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

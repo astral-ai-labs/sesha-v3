@@ -271,7 +271,7 @@ export async function POST(request: NextRequest) {
     logger.logStepPrompts(8, "Color Code", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
 
     // Generate text using messages approach
-    const { text: colorCodedArticle } = await generateText({
+    const { text: colorCodedArticle, usage } = await generateText({
       model: MODEL,
       system: finalSystemPrompt,
       messages: [
@@ -299,7 +299,15 @@ export async function POST(request: NextRequest) {
     // Build response
     const response: Step08ColorCodeAIResponse & { richContent: string }= {
       colorCodedArticle: cleanedText,
-      richContent: richContentJson
+      richContent: richContentJson,
+      usage: [
+        {
+          inputTokens: usage?.promptTokens ?? 0,
+          outputTokens: usage?.completionTokens ?? 0,
+          model: MODEL.modelId,
+          ...usage
+        },
+      ],
     };
 
     logger.logStepResponse(8, "Color Code", response);
@@ -315,6 +323,7 @@ export async function POST(request: NextRequest) {
     const errorResponse: Step08ColorCodeAIResponse = {
       colorCodedArticle: "",
       richContent: "",
+      usage: [],
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

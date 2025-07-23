@@ -13,11 +13,11 @@
 
 import { db } from "./index";
 
-import { users, articles, organizations, presets } from "./schema";
+import { users, articles, organizations, presets, runs } from "./schema";
 
-import type { NewUser, User, Preset, Article, ArticleStatus, RunType, Organization, NewPreset, BlobsCount, LengthRange } from "./schema";
+import type { NewUser, User, Preset, Article, ArticleStatus, RunType, Organization, NewPreset, NewRun, Run, BlobsCount, LengthRange } from "./schema";
 
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, gte } from "drizzle-orm";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
@@ -212,7 +212,7 @@ export async function getArticleVersionsMetadata(articleId: string): Promise<Art
     })
     .from(articles)
     .where(eq(articles.id, articleId))
-    .orderBy(articles.versionDecimal);
+    .orderBy(articles.version);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -239,8 +239,8 @@ export async function getArticleByOrgSlugVersion(
     const [latestArticle] = await db
       .select()
       .from(articles)
-             .where(and(eq(articles.orgId, orgId), eq(articles.slug, slug)))
-       .orderBy(desc(articles.versionDecimal))
+      .where(and(eq(articles.orgId, orgId), eq(articles.slug, slug)))
+      .orderBy(desc(articles.versionDecimal))
       .limit(1);
     
     return latestArticle || null;
@@ -406,7 +406,222 @@ export async function getOrgPresets(orgId: number): Promise<Preset[]> {
   return db.select().from(presets).where(eq(presets.orgId, orgId));
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Run helpers                                                               */
+/* -------------------------------------------------------------------------- */
 
+/**
+ * Create a new run (spend & usage event).
+ *
+ * @param payload - Partial run record. `id` and `createdAt` are auto-filled.
+ * @returns Inserted run row.
+ */
+export async function createRun(payload: Omit<NewRun, "id" | "createdAt">): Promise<Run> {
+  const [row] = await db.insert(runs).values(payload).returning();
+  return row;
+}
+
+/**
+ * Update cost and tokens used for a run by run ID.
+ * @param runId - The run's UUID
+ * @param costUsd - The cost in USD
+ * @param inputTokensUsed - The number of input tokens used
+ * @param outputTokensUsed - The number of output tokens used
+ * @returns The updated run row or null if not found
+ */
+export async function updateRun(runId: string, costUsd: number, inputTokensUsed: number, outputTokensUsed: number): Promise<Run | null> {
+  const [row] = await db
+    .update(runs)
+    .set({ 
+      costUsd: costUsd.toString(), 
+      inputTokensUsed, 
+      outputTokensUsed 
+    })
+    .where(eq(runs.id, runId))
+    .returning();
+  return row || null;
+}
+
+/**
+ * getOrgRunsWithUserAndOrgData
+ *
+ * Fetches runs for the given org, joined with user info, filtered by the provided filters.
+ *
+ * @param orgId - Organization ID
+ * @param filters - Filter parameters (time range, user, length, type)
+ * @returns Array of runs with user info
+ */
+export async function getOrgRunsWithUserAndOrgData(orgId: number, filters: {
+  timeRange?: "today" | "week" | "month" | "year" | "all";
+  userId?: string;
+  length?: string;
+  sourceType?: "single" | "multi";
+}) {
+  // Build filter conditions
+  const conditions = [eq(users.orgId, orgId)];
+  if (filters.userId) conditions.push(eq(runs.userId, filters.userId));
+  if (filters.length) {
+    // Ensure the value is a valid LengthRange
+    const validLengths: LengthRange[] = ["100-250", "400-550", "700-850", "1000-1200"];
+    if (validLengths.includes(filters.length as LengthRange)) {
+      conditions.push(eq(runs.length, filters.length as LengthRange));
+    }
+  }
+  if (filters.sourceType) conditions.push(eq(runs.sourceType, filters.sourceType));
+  // Time range filter
+  if (filters.timeRange && filters.timeRange !== "all") {
+    const now = new Date();
+    let fromDate: Date | undefined;
+    if (filters.timeRange === "today") {
+      fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (filters.timeRange === "week") {
+      const day = now.getDay();
+      fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+    } else if (filters.timeRange === "month") {
+      fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (filters.timeRange === "year") {
+      fromDate = new Date(now.getFullYear(), 0, 1);
+    }
+    if (fromDate) conditions.push(gte(runs.createdAt, fromDate));
+  }
+  // Query runs joined with users
+  return await db
+    .select({
+      id: runs.id,
+      articleId: runs.articleId,
+      userId: runs.userId,
+      userName: users.firstName,
+      userEmail: users.email,
+      sourceType: runs.sourceType,
+      length: runs.length,
+      costUsd: runs.costUsd,
+      inputTokensUsed: runs.inputTokensUsed,
+      outputTokensUsed: runs.outputTokensUsed,
+      createdAt: runs.createdAt,
+    })
+    .from(runs)
+    .innerJoin(users, eq(runs.userId, users.id))
+    .where(and(...conditions))
+    .orderBy(runs.createdAt);
+}
+
+/**
+ * getOrgRunsSummary
+ *
+ * Calculates summary statistics (total runs, total cost, avg cost per run) for the given org and filters.
+ *
+ * @param orgId - Organization ID
+ * @param filters - Filter parameters
+ * @returns Summary statistics object
+ */
+export async function getOrgRunsSummary(orgId: number, filters: {
+  timeRange?: "today" | "week" | "month" | "year" | "all";
+  userId?: string;
+  length?: string;
+  sourceType?: "single" | "multi";
+}) {
+  // Reuse the same filter logic as getOrgRunsWithUserAndOrgData
+  const runs = await getOrgRunsWithUserAndOrgData(orgId, filters);
+  const totalRuns = runs.length;
+  const totalCostUsd = runs.reduce((sum, r) => sum + (typeof r.costUsd === "string" ? parseFloat(r.costUsd) : (r.costUsd || 0)), 0);
+  const avgCostPerRun = totalRuns > 0 ? totalCostUsd / totalRuns : 0;
+  return { totalRuns, totalCostUsd, avgCostPerRun };
+}
+
+/**
+ * getOrgUsers
+ *
+ * Fetches all users for the given org.
+ *
+ * @param orgId - Organization ID
+ * @returns Array of users (id, name, email)
+ */
+export async function getOrgUsers(orgId?: number) {
+  if (!orgId) {
+    // Return all users
+    return await db.select({
+      id: users.id,
+      name: users.firstName,
+      email: users.email,
+    }).from(users);
+  }
+  // Return users for a specific org
+  return await db
+    .select({
+      id: users.id,
+      name: users.firstName,
+      email: users.email,
+    })
+    .from(users)
+    .where(eq(users.orgId, orgId));
+}
+
+/**
+ * getOrgSummariesWithFilters
+ *
+ * Returns an array of summary objects, one per org, matching the filters (time range, user, length, type).
+ * Each summary includes org name, org id, total runs, total cost, avg cost per run.
+ *
+ * @param filters - Filter parameters (time range, user, length, type)
+ * @returns Array of org summary objects
+ */
+export async function getOrgSummariesWithFilters(filters: {
+  timeRange?: "today" | "week" | "month" | "year" | "all";
+  userId?: string;
+  length?: string;
+  sourceType?: "single" | "multi";
+  orgId?: number;
+}) {
+  // Build filter conditions
+  const conditions = [];
+  if (filters.orgId) {
+    conditions.push(eq(organizations.id, filters.orgId));
+  }
+  if (filters.userId) conditions.push(eq(runs.userId, filters.userId));
+  if (filters.length) {
+    const validLengths: LengthRange[] = ["100-250", "400-550", "700-850", "1000-1200"];
+    if (validLengths.includes(filters.length as LengthRange)) {
+      conditions.push(eq(runs.length, filters.length as LengthRange));
+    }
+  }
+  if (filters.sourceType) conditions.push(eq(runs.sourceType, filters.sourceType));
+  // Time range filter
+  if (filters.timeRange && filters.timeRange !== "all") {
+    const now = new Date();
+    let fromDate: Date | undefined;
+    if (filters.timeRange === "today") {
+      fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (filters.timeRange === "week") {
+      const day = now.getDay();
+      fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+    } else if (filters.timeRange === "month") {
+      fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (filters.timeRange === "year") {
+      fromDate = new Date(now.getFullYear(), 0, 1);
+    }
+    if (fromDate) conditions.push(gte(runs.createdAt, fromDate));
+  }
+  // Query runs joined with organizations, group by org
+  const results = await db
+    .select({
+      orgId: organizations.id,
+      organizationName: organizations.name,
+      totalRuns: sql<number>`count(${runs.id})`,
+      totalCostUsd: sql<number>`coalesce(sum(${runs.costUsd}), 0)`,
+      avgCostPerRun: sql<number>`coalesce(avg(${runs.costUsd}), 0)`
+    })
+    .from(runs)
+    .innerJoin(articles, eq(runs.articleId, articles.id))
+    .innerJoin(organizations, eq(articles.orgId, organizations.id))
+    .where(and(...conditions))
+    .groupBy(organizations.id, organizations.name);
+  // Parse numeric fields to numbers if needed
+  return results.map(row => ({
+    ...row,
+    totalCostUsd: typeof row.totalCostUsd === 'string' ? parseFloat(row.totalCostUsd) : row.totalCostUsd,
+    avgCostPerRun: typeof row.avgCostPerRun === 'string' ? parseFloat(row.avgCostPerRun) : row.avgCostPerRun,
+  }));
+}
 
 /* -------------------------------------------------------------------------- */
 /*  Pipeline Database Operations                                              */
@@ -469,8 +684,20 @@ export async function createAiArticleRecord(payload: {
       .limit(1)
       .for("update"); // This locks the row(s) until transaction commits
 
-    const nextVersion = (currentHighest?.version || 0) + 1;
-    const nextVersionDecimal = `${nextVersion}.00`; // AI versions always end in .00
+    // Calculate next version based on the highest decimal version
+    let nextVersion: number;
+    let nextVersionDecimal: string;
+    
+    if (currentHighest) {
+      const currentDecimal = parseFloat(currentHighest.versionDecimal);
+      const currentMajor = Math.floor(currentDecimal);
+      nextVersion = currentMajor + 1;
+      nextVersionDecimal = `${nextVersion}.00`; // AI versions always end in .00
+    } else {
+      // No existing articles, start with version 1.00
+      nextVersion = 1;
+      nextVersionDecimal = "1.00";
+    }
 
     // Prepare source data for all 6 possible sources
     const sourceData = {

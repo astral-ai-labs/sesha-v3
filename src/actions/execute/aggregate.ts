@@ -49,6 +49,7 @@ import type {
   Step08ColorCodeResponse,
   Step08ColorCodeAIResponse,
   ArticleStepOutputs,
+  AggregateSource,
 } from "@/types/aggregate";
 
 /* ==========================================================================*/
@@ -61,6 +62,32 @@ const baseUrl = process.env.NEXT_PUBLIC_URL;
 if (!baseUrl) {
   console.error("⚠️ Missing NEXT_PUBLIC_URL environment variable. Steps will not work correctly.");
 }
+
+/**
+ * MODEL_PRICING
+ *
+ * Maps AI model names to their input/output token prices (per 1M tokens, USD).
+ * Update this map if Anthropic/OpenAI pricing or model names change.
+ */
+const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  // Claude 3.5/3.7 Sonnet
+  "claude-3-5-sonnet-20240620": { input: 3, output: 15 },
+  "claude-3-5-sonnet": { input: 3, output: 15 },
+  "claude-3-7-sonnet": { input: 3, output: 15 },
+  // Claude 4 Sonnet
+  "claude-4-sonnet": { input: 3, output: 15 },
+  // Claude 4 Opus
+  "claude-4-opus": { input: 15, output: 75 },
+  // Claude 3 Opus
+  "claude-3-opus": { input: 15, output: 75 },
+  // Claude 3.5 Haiku
+  "claude-3-5-haiku": { input: 0.8, output: 4 },
+  // Claude 3 Haiku
+  "claude-3-haiku": { input: 0.25, output: 1.25 },
+  // OpenAI GPT-4o
+  "gpt-4o": { input: 2.5, output: 10 },
+  "gpt-4o-mini": { input: 0.15, output: 0.6 },
+};
 
 /* ==========================================================================*/
 // Helper Functions
@@ -88,7 +115,7 @@ async function handleStepFailure(
   await updateArticleStatus(articleId, userId, "failed");
   logger.logError(`STEP_${stepNumber}_FAILED`, `Step ${stepNumber} failed, pipeline stopped`);
   await closeGlobalLogger();
-  return { success: false };
+  return { success: false, costUsd: 0, totalInputTokens: 0, totalOutputTokens: 0 };
 }
 
 /**
@@ -127,6 +154,76 @@ function validatePipelineSuccess(
   const finalHeadlineAndBlobs = Boolean(step3Result.headline) && step3Result.headline.length > 0 && Boolean(step3Result.blobs) && step3Result.blobs.length > 0;
 
   return allStepsSuccessful && finalArticle && finalHeadlineAndBlobs;
+}
+
+/**
+ * UsageWithModel
+ *
+ * Interface for usage objects that contain token info and model name.
+ */
+interface UsageWithModel {
+  inputTokens: number;
+  outputTokens: number;
+  model: string;
+  [key: string]: unknown;
+}
+
+/**
+ * calculateTotalTokensAndCostFromSources
+ *
+ * Computes total input tokens, output tokens, and cost for an array of AggregateSource.
+ * @param sources - Array of AggregateSource (with usage/model)
+ * @returns Object with totalInputTokens, totalOutputTokens, totalCost
+ */
+function calculateTotalTokensAndCostFromSources(sources: AggregateSource[]) {
+  return sources.reduce(
+    (acc, source) => {
+      const usageArray = source.usage;
+      
+      if (usageArray && Array.isArray(usageArray)) {
+        // Sum up tokens from all usage objects in the array
+        usageArray.forEach((usage) => {
+          const model = usage.model;
+          if (model && MODEL_PRICING[model]) {
+            const pricing = MODEL_PRICING[model];
+            acc.totalInputTokens += usage.inputTokens || 0;
+            acc.totalOutputTokens += usage.outputTokens || 0;
+            const inputCost = ((usage.inputTokens || 0) / 1_000_000) * pricing.input;
+            const outputCost = ((usage.outputTokens || 0) / 1_000_000) * pricing.output;
+            acc.totalCost += inputCost + outputCost;
+          }
+        });
+      }
+      
+      return acc;
+    },
+    { totalInputTokens: 0, totalOutputTokens: 0, totalCost: 0 }
+  );
+}
+
+/**
+ * calculateTotalTokensAndCostFromUsageArray
+ *
+ * Computes total input tokens, output tokens, and cost for an array of usage objects.
+ * @param usageArray - Array of usage objects with token info and model
+ * @returns Object with totalInputTokens, totalOutputTokens, totalCost
+ */
+function calculateTotalTokensAndCostFromUsageArray(usageArray: UsageWithModel[]) {
+  return usageArray.reduce(
+    (acc, usage) => {
+      const model = usage.model;
+      if (model && MODEL_PRICING[model]) {
+        const pricing = MODEL_PRICING[model];
+        acc.totalInputTokens += usage.inputTokens || 0;
+        acc.totalOutputTokens += usage.outputTokens || 0;
+        const inputCost = ((usage.inputTokens || 0) / 1_000_000) * pricing.input;
+        const outputCost = ((usage.outputTokens || 0) / 1_000_000) * pricing.output;
+        acc.totalCost += inputCost + outputCost;
+      }
+      return acc;
+    },
+    { totalInputTokens: 0, totalOutputTokens: 0, totalCost: 0 }
+  );
 }
 
 /* ==========================================================================*/
@@ -176,6 +273,14 @@ async function step01FactsBitSplitting(
 
     const aiResult: Step01FactsBitSplittingAIResponse = await response.json();
 
+    // Calculate token usage (input and output) and cost
+    const totals = calculateTotalTokensAndCostFromSources(aiResult.sources);
+
+    // Log the totals for debugging/analysis
+    console.log(`Step 01 total input tokens: ${totals.totalInputTokens}`);
+    console.log(`Step 01 total output tokens: ${totals.totalOutputTokens}`);
+    console.log(`Step 01 total cost (USD): $${totals.totalCost.toFixed(6)}`);
+
     // Log the API response
     if (logger) {
       logger.logStepResponse(1, "Facts Bit Splitting", aiResult);
@@ -187,6 +292,7 @@ async function step01FactsBitSplitting(
       stepNumber: 1,
       success: true,
       sources: aiResult.sources,
+      totals,
     };
 
     // Log step completion
@@ -208,6 +314,11 @@ async function step01FactsBitSplitting(
       stepNumber: 1,
       success: false,
       sources: [],
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -259,6 +370,15 @@ async function step02FactsBitSplitting2(
 
       const aiResult: FactsBitSplitting2AIResponse = await response.json();
 
+      // Calculate token usage (input and output) and cost
+      const totals = calculateTotalTokensAndCostFromSources(aiResult.sources);
+
+      // Log the totals for debugging/analysis
+      console.log(`Step 02 total input tokens: ${totals.totalInputTokens}`);
+      console.log(`Step 1 total output tokens: ${totals.totalOutputTokens}`);
+      console.log(`Step 1 total cost (USD): $${totals.totalCost.toFixed(6)}`);
+
+
       // Log the API response
       if (logger) {
         logger.logStepResponse(2, "Facts Bit Splitting 2", aiResult);
@@ -270,6 +390,7 @@ async function step02FactsBitSplitting2(
         stepNumber: 2,
         success: true,
         sources: aiResult.sources,
+        totals,
       };
 
       // Log step completion
@@ -305,6 +426,11 @@ async function step02FactsBitSplitting2(
         stepNumber: 2,
         success: true,
         sources: processedSources,
+        totals: {
+          totalInputTokens: 0,
+          totalOutputTokens: 0,
+          totalCost: 0,
+        },
       };
 
       // Log step completion
@@ -327,6 +453,11 @@ async function step02FactsBitSplitting2(
       stepNumber: 2,
       success: false,
       sources: [],
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -363,7 +494,7 @@ async function step03HeadlinesBlobs(
     if (logger) {
       logger.logStepRequest(3, "Headlines Blobs", step03Request);
     }
-
+ 
     // Call the API endpoint
     const response = await fetch(`${baseUrl}/api/aggregate-steps/03-headlines-blobs`, {
       method: "POST",
@@ -379,6 +510,15 @@ async function step03HeadlinesBlobs(
 
     const aiResult: Step03HeadlinesBlobsAIResponse = await response.json();
 
+    // Calculate token usage (input and output) and cost
+    const totals = calculateTotalTokensAndCostFromUsageArray(aiResult.usage);
+
+    // Log the totals for debugging/analysis
+    console.log(`Step 03 total input tokens: ${totals.totalInputTokens}`);
+    console.log(`Step 03 total output tokens: ${totals.totalOutputTokens}`);
+    console.log(`Step 03 total cost (USD): $${totals.totalCost.toFixed(6)}`);
+
+
     // Log the API response
     if (logger) {
       logger.logStepResponse(3, "Headlines Blobs", aiResult);
@@ -391,6 +531,7 @@ async function step03HeadlinesBlobs(
       success: true,
       headline: aiResult.headline,
       blobs: aiResult.blobs,
+      totals,
     };
 
     // Log step completion
@@ -413,6 +554,11 @@ async function step03HeadlinesBlobs(
       success: false,
       headline: "",
       blobs: [],
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -466,6 +612,15 @@ async function step04WriteArticleOutline(
 
     const aiResult: Step04WriteArticleOutlineAIResponse = await response.json();
 
+    // Calculate token usage (input and output) and cost
+    const totals = calculateTotalTokensAndCostFromUsageArray(aiResult.usage);
+
+    // Log the totals for debugging/analysis
+    console.log(`Step 04 total input tokens: ${totals.totalInputTokens}`);
+    console.log(`Step 04 total output tokens: ${totals.totalOutputTokens}`);
+    console.log(`Step 04 total cost (USD): $${totals.totalCost.toFixed(6)}`);
+
+
     // Log the API response
     if (logger) {
       logger.logStepResponse(4, "Write Article Outline", aiResult);
@@ -477,6 +632,7 @@ async function step04WriteArticleOutline(
       stepNumber: 4,
       success: true,
       outline: aiResult.outline,
+      totals,
     };
 
     // Log step completion
@@ -498,6 +654,11 @@ async function step04WriteArticleOutline(
       stepNumber: 4,
       success: false,
       outline: "",
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -552,6 +713,15 @@ async function step05WriteArticle(
 
     const aiResult: Step05WriteArticleAIResponse = await response.json();
 
+    // Calculate token usage (input and output) and cost
+    const totals = calculateTotalTokensAndCostFromUsageArray(aiResult.usage);
+
+    // Log the totals for debugging/analysis
+    console.log(`Step 05 total input tokens: ${totals.totalInputTokens}`);
+    console.log(`Step 05 total output tokens: ${totals.totalOutputTokens}`);
+    console.log(`Step 05 total cost (USD): $${totals.totalCost.toFixed(6)}`);
+
+
     // Log the API response
     if (logger) {
       logger.logStepResponse(5, "Write Article", aiResult);
@@ -563,6 +733,7 @@ async function step05WriteArticle(
       stepNumber: 5,
       success: true,
       article: aiResult.article,
+      totals,
     };
 
     // Log step completion
@@ -584,6 +755,11 @@ async function step05WriteArticle(
       stepNumber: 5,
       success: false,
       article: "",
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -634,6 +810,15 @@ async function step06RewriteArticle(
 
     const aiResult: Step06RewriteArticleAIResponse = await response.json();
 
+    // Calculate token usage (input and output) and cost
+    const totals = calculateTotalTokensAndCostFromUsageArray(aiResult.usage);
+
+    // Log the totals for debugging/analysis
+    console.log(`Step 06 total input tokens: ${totals.totalInputTokens}`);
+    console.log(`Step 06 total output tokens: ${totals.totalOutputTokens}`);
+    console.log(`Step 06 total cost (USD): $${totals.totalCost.toFixed(6)}`);
+
+
     // Log the API response
     if (logger) {
       logger.logStepResponse(6, "Rewrite Article", aiResult);
@@ -645,6 +830,7 @@ async function step06RewriteArticle(
       stepNumber: 6,
       success: true,
       rewrittenArticle: aiResult.rewrittenArticle,
+      totals,
     };
 
     // Log step completion
@@ -666,6 +852,11 @@ async function step06RewriteArticle(
       stepNumber: 6,
       success: false,
       rewrittenArticle: "",
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -716,6 +907,15 @@ async function step07RewriteArticle2(
 
     const aiResult: Step07RewriteArticle2AIResponse = await response.json();
 
+    // Calculate token usage (input and output) and cost
+    const totals = calculateTotalTokensAndCostFromUsageArray(aiResult.usage);
+
+    // Log the totals for debugging/analysis
+    console.log(`Step 07 total input tokens: ${totals.totalInputTokens}`);
+    console.log(`Step 07 total output tokens: ${totals.totalOutputTokens}`);
+    console.log(`Step 07 total cost (USD): $${totals.totalCost.toFixed(6)}`);
+
+
     // Log the API response
     if (logger) {
       logger.logStepResponse(7, "Rewrite Article 2", aiResult);
@@ -727,6 +927,7 @@ async function step07RewriteArticle2(
       stepNumber: 7,
       success: true,
       rewrittenArticle: aiResult.rewrittenArticle,
+      totals,
     };
 
     // Log step completion
@@ -748,6 +949,11 @@ async function step07RewriteArticle2(
       stepNumber: 7,
       success: false,
       rewrittenArticle: "",
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -797,6 +1003,15 @@ async function step08ColorCode(
 
     const aiResult: Step08ColorCodeAIResponse = await response.json();
 
+    // Calculate token usage (input and output) and cost
+    const totals = calculateTotalTokensAndCostFromUsageArray(aiResult.usage);
+
+    // Log the totals for debugging/analysis
+    console.log(`Step 08 total input tokens: ${totals.totalInputTokens}`);
+    console.log(`Step 08 total output tokens: ${totals.totalOutputTokens}`);
+    console.log(`Step 08 total cost (USD): $${totals.totalCost.toFixed(6)}`);
+
+
     // Log the API response
     if (logger) {
       logger.logStepResponse(8, "Color Code", aiResult);
@@ -809,6 +1024,7 @@ async function step08ColorCode(
       success: true,
       colorCodedArticle: aiResult.colorCodedArticle,
       richContent: aiResult.richContent,
+      totals,
     };
 
     // Log step completion
@@ -831,6 +1047,11 @@ async function step08ColorCode(
       success: false,
       colorCodedArticle: "",
       richContent: "",
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+      },
     };
   }
 }
@@ -872,6 +1093,11 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
       fullRequest: request // Include complete request object
     });
 
+    // Initialize cumulative totals
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let totalCost = 0;
+
     // Step 1: Facts Bit Splitting
     const step1Result = await step01FactsBitSplitting(articleId, request, logger);
     
@@ -882,12 +1108,25 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
     // Update status to 10% after step 1
     await updateArticleStatus(articleId, request.metadata.userId, "10%");
 
+    // Accumulate totals from step 1
+    totalInputTokens += step1Result.totals.totalInputTokens;
+    totalOutputTokens += step1Result.totals.totalOutputTokens;
+    totalCost += step1Result.totals.totalCost;
+
     // Step 2: Facts Bit Splitting 2
     const step2Result = await step02FactsBitSplitting2(articleId, step1Result, logger);
     
     if (!step2Result.success) {
       return await handleStepFailure(2, articleId, request.metadata.userId, logger);
     }
+
+    // Update status to 25% after step 2
+    await updateArticleStatus(articleId, request.metadata.userId, "25%");
+
+    // Accumulate totals from step 2
+    totalInputTokens += step2Result.totals.totalInputTokens;
+    totalOutputTokens += step2Result.totals.totalOutputTokens;
+    totalCost += step2Result.totals.totalCost;
 
     // Step 3: Headlines Blobs
     const step3Result = await step03HeadlinesBlobs(articleId, request, step2Result, logger);
@@ -898,6 +1137,11 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
 
     // Update status to 25% after step 3
     await updateArticleStatus(articleId, request.metadata.userId, "25%");
+
+    // Accumulate totals from step 3
+    totalInputTokens += step3Result.totals.totalInputTokens;
+    totalOutputTokens += step3Result.totals.totalOutputTokens;
+    totalCost += step3Result.totals.totalCost;
 
     // Build articleStepOutputs for remaining steps
     const articleStepOutputs: ArticleStepOutputs = {
@@ -917,6 +1161,14 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
       return await handleStepFailure(4, articleId, request.metadata.userId, logger);
     }
 
+    // Update status to 50% after step 4
+    await updateArticleStatus(articleId, request.metadata.userId, "50%");
+
+    // Accumulate totals from step 4
+    totalInputTokens += step4Result.totals.totalInputTokens;
+    totalOutputTokens += step4Result.totals.totalOutputTokens;
+    totalCost += step4Result.totals.totalCost;
+
     // Update articleStepOutputs with step 4 results
     articleStepOutputs.writeArticleOutline = {
       text: step4Result.outline,
@@ -932,6 +1184,11 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
     // Update status to 50% after step 5
     await updateArticleStatus(articleId, request.metadata.userId, "50%");
 
+    // Accumulate totals from step 5
+    totalInputTokens += step5Result.totals.totalInputTokens;
+    totalOutputTokens += step5Result.totals.totalOutputTokens;
+    totalCost += step5Result.totals.totalCost;
+
     // Update articleStepOutputs with step 5 results
     articleStepOutputs.writeArticle = {
       text: step5Result.article,
@@ -943,6 +1200,14 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
     if (!step6Result.success) {
       return await handleStepFailure(6, articleId, request.metadata.userId, logger);
     }
+
+    // Update status to 75% after step 6
+    await updateArticleStatus(articleId, request.metadata.userId, "75%");
+
+    // Accumulate totals from step 6
+    totalInputTokens += step6Result.totals.totalInputTokens;
+    totalOutputTokens += step6Result.totals.totalOutputTokens;
+    totalCost += step6Result.totals.totalCost;
 
     // Update articleStepOutputs with step 6 results
     articleStepOutputs.rewriteArticle = {
@@ -959,6 +1224,14 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
       return await handleStepFailure(7, articleId, request.metadata.userId, logger);
     }
 
+    // Update status to 90% after step 7
+    await updateArticleStatus(articleId, request.metadata.userId, "90%");
+
+    // Accumulate totals from step 7
+    totalInputTokens += step7Result.totals.totalInputTokens;
+    totalOutputTokens += step7Result.totals.totalOutputTokens;
+    totalCost += step7Result.totals.totalCost;
+
     // Update articleStepOutputs with step 7 results
     articleStepOutputs.rewriteArticle2 = {
       text: step7Result.rewrittenArticle,
@@ -974,6 +1247,11 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
       return await handleStepFailure(8, articleId, request.metadata.userId, logger);
     }
 
+    // Accumulate totals from step 8
+    totalInputTokens += step8Result.totals.totalInputTokens;
+    totalOutputTokens += step8Result.totals.totalOutputTokens;
+    totalCost += step8Result.totals.totalCost;
+
     // Validate pipeline success
     const isSuccessful = validatePipelineSuccess(step1Result, step2Result, step3Result, step4Result, step5Result, step6Result, step7Result, step8Result);
 
@@ -983,6 +1261,9 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
     // Build response
     const response: PipelineResponse = {
       success: isSuccessful,
+      costUsd: totalCost,
+      totalInputTokens: totalInputTokens,
+      totalOutputTokens: totalOutputTokens,
     };
 
     // Log pipeline completion
@@ -1021,6 +1302,9 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
 
     return {
       success: false,
+      costUsd: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
     };
   }
 }

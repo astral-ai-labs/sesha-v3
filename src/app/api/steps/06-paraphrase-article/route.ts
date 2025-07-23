@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
     logger.logStepPrompts(6, "Paraphrase Article", systemPrompt, userPrompt);
 
     // Generate structured object using AI SDK
-    const { text: paraphrasedArticle } = await generateText({
+    const { text: paraphrasedArticle, usage } = await generateText({
       model,
       system: systemPrompt,
       messages: [
@@ -222,6 +222,14 @@ export async function POST(request: NextRequest) {
     // Build response - only AI data
     const response: Step06ParaphraseArticleAIResponse = {
       paraphrasedArticle: paraphrasedArticle,
+      usage: [
+        {
+          inputTokens: usage?.promptTokens ?? 0,
+          outputTokens: usage?.completionTokens ?? 0,
+          model: model.modelId,
+          ...usage
+        },
+      ],
     };
 
     logger.logStepResponse(6, "Paraphrase Article", response);
@@ -235,6 +243,7 @@ export async function POST(request: NextRequest) {
 
     const errorResponse: Step06ParaphraseArticleAIResponse = {
       paraphrasedArticle: "",
+      usage: [],
     };
 
     return NextResponse.json(errorResponse, { status: 500 });
