@@ -49,7 +49,6 @@ export function ArticleComplete({ name, slug, versionDecimal, href }: ArticleCom
             alt="Sesha Logo" 
             style={{ width: '195px', height: '50px' }}
           /> */}
-          Sesha Logo
         </div>
         
         {/* Article Completed Banner */}
