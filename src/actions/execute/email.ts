@@ -55,6 +55,7 @@ export async function sendCompletionEmail(
 
     // Calculate version for URL
     const version = currentVersion ? currentVersion : 1;
+    const versionDecimal = version.toString();
 
     // Construct href URL
     const href = `${baseUrl}/article?slug=${slug}&version=${version}`;
@@ -72,6 +73,8 @@ export async function sendCompletionEmail(
         name: user.firstName || "User",
         slug: slug,
         version: version,
+        versionDecimal: versionDecimal,
+        emailType: 'completion',
       }),
     });
 

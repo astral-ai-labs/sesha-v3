@@ -21,6 +21,7 @@ interface ArticleEmailExportProps {
   articleHeadline: string;
   articleSlug: string;
   versionDecimal: string;
+  href: string;
   content?: string;
   articleHtml?: string;
   blobs?: string;
@@ -30,7 +31,7 @@ interface ArticleEmailExportProps {
 // Component
 /* ==========================================================================*/
 
-export function ArticleEmailExport({ articleHeadline, articleSlug, versionDecimal, content, articleHtml, blobs }: ArticleEmailExportProps) {
+export function ArticleEmailExport({ articleHeadline, articleSlug, versionDecimal, href, content, articleHtml, blobs }: ArticleEmailExportProps) {
   const currentDate = new Date().toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
@@ -112,6 +113,25 @@ export function ArticleEmailExport({ articleHeadline, articleSlug, versionDecima
       >
         {articleHeadline}
       </h1>
+
+      {/* Article Link */}
+      <div style={{ margin: "20px 0", textAlign: "center" }}>
+        <a
+          href={href}
+          style={{
+            display: "inline-block",
+            backgroundColor: "#007bff",
+            color: "white",
+            padding: "12px 24px",
+            textDecoration: "none",
+            borderRadius: "4px",
+            fontWeight: "bold",
+            fontSize: "16px",
+          }}
+        >
+          View Article Online
+        </a>
+      </div>
 
       {/* Blobs */}
       {blobs && blobs.trim() && <div style={{ margin: "0 0 20px 0", padding: "0", border: "none" }}>{formatBlobs(blobs)}</div>}

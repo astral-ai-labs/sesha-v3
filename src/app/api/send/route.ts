@@ -1,6 +1,7 @@
-import { ArticleEmailExport } from '@/components/email/article-email-export';
 import { Resend } from 'resend';
 import { NextRequest, NextResponse } from 'next/server';
+import { ArticleComplete } from '@/components/email/article-complete';
+import { ArticleEmailExport } from '@/components/email/article-email-export';
 
 // ==========================================================================
 // Configuration
@@ -23,6 +24,7 @@ interface SendEmailRequest {
   content?: string;
   articleHtml?: string;
   blobs?: string;
+  emailType?: 'completion' | 'export';
 }
 
 // ==========================================================================
@@ -59,21 +61,36 @@ export async function POST(request: NextRequest) {
     console.log("Content: ", body.content);
     console.log("Article HTML length: ", body.articleHtml?.length);
     console.log("Blobs: ", body.blobs);
+    console.log("Email Type: ", body.emailType);
+
+    // Determine which template to use based on email type and available data
+    const isExportEmail = body.emailType === 'export' || 
+                         (body.content || body.articleHtml || body.blobs);
+
+    const emailComponent = isExportEmail 
+      ? ArticleEmailExport({
+          recipientName: body.name,
+          senderName: "sesha systems",
+          articleHeadline: body.subject.replace(/^Article Complete: /, '').replace(/ version \d+$/, ''),
+          articleSlug: body.slug,
+          versionDecimal: body.versionDecimal,
+          href: body.href,
+          content: body.content,
+          articleHtml: body.articleHtml,
+          blobs: body.blobs,
+        })
+      : ArticleComplete({
+          name: body.name,
+          slug: body.slug,
+          versionDecimal: body.versionDecimal,
+          href: body.href,
+        });
 
     const { data, error } = await resend.emails.send({
       from: 'updates@updates.sesha-systems.com',
       to: body.to,
       subject: body.subject,
-      react: ArticleEmailExport({ 
-        recipientName: 'User', // We don't have recipient name from the form
-        senderName: body.name,
-        articleHeadline: body.subject,
-        articleSlug: body.slug,
-        versionDecimal: body.versionDecimal,
-        content: body.content,
-        articleHtml: body.articleHtml,
-        blobs: body.blobs
-      }),
+      react: emailComponent,
     });
 
     if (error) {
