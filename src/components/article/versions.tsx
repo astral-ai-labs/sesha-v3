@@ -17,6 +17,9 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+// Lucide Icons ---
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
 // Shadcn UI ---
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -37,6 +40,13 @@ interface VersionCardProps {
   createdAt: Date;
   isActive: boolean;
   onClick: () => void;
+}
+
+interface VersionsProps {
+  isCollapsed: boolean;
+  onCollapse: () => void;
+  onExpand: () => void;
+  panelSize: number;
 }
 
 /* ==========================================================================*/
@@ -110,11 +120,10 @@ function VersionTooltip({ headline, blobOutline, children }: VersionTooltipProps
  * Displays individual version information with version number, headline, and timestamp.
  * Shows active state for current version and handles click to switch versions.
  */
-function VersionCard({ versionDecimal, headline, blobOutline, createdAt, isActive, onClick }: VersionCardProps) {
+function VersionCard({ versionDecimal, headline, blobOutline, createdAt, isActive, onClick, showDate = true }: VersionCardProps & { showDate?: boolean }) {
   const formattedDate = createdAt.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    year: "numeric",
   });
 
   return (
@@ -125,7 +134,9 @@ function VersionCard({ versionDecimal, headline, blobOutline, createdAt, isActiv
             <div className="flex items-center gap-2">
               <span className={`text-xs font-medium px-2 py-1 rounded ${isActive ? "text-primary-foreground bg-primary" : "text-primary bg-primary/10"}`}>v{versionDecimal}</span>
             </div>
-            <div className="text-xs text-muted-foreground">{formattedDate}</div>
+            {showDate && (
+              <div className="text-[10px] text-muted-foreground">{formattedDate}</div>
+            )}
           </div>
 
           <div className="space-y-1">
@@ -142,34 +153,76 @@ function VersionCard({ versionDecimal, headline, blobOutline, createdAt, isActiv
  *
  * Main component displaying article version history with navigation to digest page.
  * Uses article context for version data and switching.
+ * Shows arrow controls for collapsing/expanding the panel.
  */
-function Versions() {
+function Versions({ isCollapsed, onCollapse, onExpand, panelSize }: VersionsProps) {
   const router = useRouter();
   const { versionMetadata, currentVersion, setCurrentVersion, currentArticle } = useArticle();
 
-  // Note: Router navigation is handled by the version card click handlers, not in useEffect
-  // The previous useEffect with router.push was causing infinite loops
-
-
   const sourceType = currentArticle?.sourceType === "multi" ? "aggregator" : "digest";
 
+  // Determine if we should use compact layout based on panel size
+  const isCompact = panelSize < 25;
+  const horizontalPadding = isCompact ? "px-2" : "px-6";
+
+  // Collapsed view - show expand arrow ---
+  if (isCollapsed) {
+    return (
+      <div className="h-full flex flex-col justify-start pt-[21px]">
+        <div className="flex justify-center">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button 
+                onClick={onExpand}
+                className="p-1 rounded-md hover:bg-accent transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Expand Versions</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+    );
+  }
+
+  // Full view - show all content with collapse arrow ---
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-1 overflow-y-auto space-y-4 pl-2 py-4 pr-4">
-        {/* Start of Header Section --- */}
-        <div className="space-y-4">
-          <Label className="text-sm font-medium">Version History</Label>
+      {/* Start of Header Section with Collapse Button --- */}
+      <div className={`flex items-center justify-between ${horizontalPadding} pt-5 pb-4`}>
+        <Label className="text-sm font-medium">Version History</Label>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button 
+              onClick={onCollapse}
+              className="p-1 rounded-md hover:bg-accent transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            <p>Collapse Panel</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      {/* End of Header Section --- */}
 
+      <div className={`flex-1 overflow-y-auto space-y-6 ${horizontalPadding} py-4`}>
+        {/* Start of Change Inputs Button --- */}
+        <div>
           <Button asChild className="w-full bg-blue-500 hover:bg-blue-600 cursor-pointer text-white">
             <Link href={currentArticle ? `/${sourceType}?slug=${currentArticle.slug}&version=${encodeURIComponent(currentVersion)}` : `/${sourceType}`}>
-              <span className="font-medium">CHANGE INPUTS</span>
+              <span className="font-medium text-xs">CHANGE INPUTS</span>
             </Link>
           </Button>
         </div>
-        {/* End of Header Section ---- */}
+        {/* End of Change Inputs Button --- */}
 
         {/* Start of Version Cards --- */}
-        <div className="space-y-3 pt-2">
+        <div className="space-y-3">
           {versionMetadata.map((versionData) => (
             <VersionCard
               key={versionData.versionDecimal}
@@ -178,6 +231,7 @@ function Versions() {
               blobOutline={versionData.blobOutline || ""}
               createdAt={versionData.createdAt}
               isActive={versionData.versionDecimal === currentVersion}
+              showDate={!isCompact}
               onClick={() => {
                 // Only navigate if we're switching to a different version
                 if (versionData.versionDecimal !== currentVersion && currentArticle) {

@@ -11,13 +11,6 @@
 // React Core ---
 import * as React from "react";
 
-// Next.js Core ---
-// import Image from "next/image";
-
-// Local UI Components ---
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-
 /* ==========================================================================*/
 // Props Interface
 /* ==========================================================================*/
@@ -25,7 +18,7 @@ import { Button } from "@/components/ui/button";
 interface ArticleCompleteProps {
   name: string;
   slug: string;
-  version: number;
+  versionDecimal: string;
   href: string;
 }
 
@@ -33,46 +26,153 @@ interface ArticleCompleteProps {
 // Component
 /* ==========================================================================*/
 
-export function ArticleComplete({ name, slug, version, href }: ArticleCompleteProps) {
+export function ArticleComplete({ name, slug, versionDecimal, href }: ArticleCompleteProps) {
   return (
-    <div className="max-w-lg mx-auto bg-white">
+    <div style={{
+      maxWidth: '600px',
+      margin: '0 auto',
+      backgroundColor: 'white',
+      fontFamily: 'Arial, sans-serif',
+      padding: '24px',
+      border: 'none',
+    }}>
       {/* Header with Logo */}
-      <div className="text-center mb-6">
-        Sesha
+      <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          marginBottom: '16px' 
+        }}>
+          {/* <img
+            src="" 
+            alt="Sesha Logo" 
+            style={{ width: '195px', height: '50px' }}
+          /> */}
+          Sesha Logo
+        </div>
+        
+        {/* Article Completed Banner */}
+        <div style={{
+          backgroundColor: 'black',
+          color: 'white',
+          textAlign: 'center',
+          padding: '12px 24px',
+          borderRadius: '0',
+          marginBottom: '24px'
+        }}>
+          <div style={{
+            fontSize: '18px',
+            fontWeight: 'bold',
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase'
+          }}>
+            ARTICLE COMPLETED
+          </div>
+        </div>
       </div>
 
-      {/* Main Card */}
-      <Card className="border-0 shadow-none bg-transparent">
-        <CardContent className="p-0 space-y-6">
-          {/* Article Completed Banner */}
-          {/* <div className="bg-black text-white text-center py-3 px-6">
-            <div className="text-lg font-bold">
-              <span className="bg-yellow-400 text-black px-2 py-1 mr-2">ARTICLE</span>
-              COMPLETED
-            </div>
-          </div> */}
+      {/* Main Content */}
+      <div style={{ marginBottom: '24px' }}>
+        {/* Greeting */}
+        <p style={{
+          margin: '0 0 16px 0',
+          fontSize: '16px',
+          color: '#374151',
+          lineHeight: '1.5'
+        }}>
+          Hi {name},
+        </p>
 
-          {/* Content */}
-          <div className="space-y-4 px-4">
-            {/* Greeting */}
-            <p className="text-gray-700">Hi {name},</p>
+        {/* Article completion message */}
+        <p style={{
+          margin: '0 0 24px 0',
+          fontSize: '16px',
+          color: '#374151',
+          lineHeight: '1.6'
+        }}>
+          Your <span style={{ fontWeight: '500' }}>article</span> - &quot;{slug}&quot; version: {versionDecimal} is now complete! This <span style={{ fontWeight: '500' }}>article</span> is ready for your review.
+        </p>
 
-            {/* Article completion message */}
-            <p className="text-gray-700">
-              Your <span className="font-medium">article</span> - &quot;{slug}&quot; version: {version} is now complete! This <span className="font-medium">article</span> is ready for your review.
-            </p>
-
-            {/* Review Button */}
-            <div className="pt-4">
-              <Button asChild className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 text-center" size="lg">
-                <a href={href} target="_blank" rel="noopener noreferrer">
-                  Review Article
-                </a>
-              </Button>
-            </div>
+        {/* Review Button */}
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{
+            backgroundColor: '#f5f5f5',
+            padding: '40px',
+            borderRadius: '8px',
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            textAlign: 'center'
+          }}>
+            <a 
+              href={href} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-block',
+                backgroundColor: '#2563eb',
+                color: 'white',
+                fontWeight: 'bold',
+                padding: '16px 24px',
+                textAlign: 'center',
+                fontSize: '16px',
+                letterSpacing: '0.05em',
+                borderRadius: '6px',
+                textDecoration: 'none',
+                textTransform: 'uppercase',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              REVIEW &quot;{slug}&quot; VERSION {versionDecimal}
+            </a>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Instructions and Alternative Link */}
+        <p style={{
+          margin: '0 0 24px 0',
+          fontSize: '16px',
+          color: '#374151',
+          lineHeight: '1.6'
+        }}>
+          Or copy this link into your browser:{" "}
+          <a 
+            href={href} 
+            style={{
+              color: '#2563eb',
+              textDecoration: 'underline'
+            }}
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
+            {href}
+          </a>
+        </p>
+        <p style={{
+          margin: '0 0 24px 0',
+          fontSize: '16px',
+          color: '#374151',
+          lineHeight: '1.6'
+        }}>
+          Now that your article is completed, you can always try to re-run it again with minor adjustments or make further human edits to polish it off.
+        </p>
+
+        {/* Tip Section */}
+        <div style={{
+          backgroundColor: '#f9fafb',
+          padding: '16px',
+          borderRadius: '6px',
+          border: '1px solid #e5e7eb'
+        }}>
+          <p style={{
+            margin: '0',
+            fontSize: '16px',
+            color: '#374151',
+            lineHeight: '1.6'
+          }}>
+            <span style={{ fontWeight: 'bold' }}>TIP:</span> You can run multiple versions of an article simultaneously to review and compare minor adjustments.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

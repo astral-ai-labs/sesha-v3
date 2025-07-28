@@ -53,6 +53,7 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
   const [textExpanded, setTextExpanded] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [isDragEnabled, setIsDragEnabled] = useState(false);
   
   const source = sources[sourceIndex];
   const canRemoveSource = mode === "multi" && sources.length > 1;
@@ -113,9 +114,9 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
   const handleTextChange = (val: string) => setSourceUsage(sourceIndex, "sourceText", val);
   const handleTextExpandToggle = () => setTextExpanded((p) => !p);
 
-  // Drag and drop handlers
+  // Drag and drop handlers - modified to only work when hovering over grip icon
   const handleDragStart = (e: React.DragEvent) => {
-    if (!canReorderSources) return;
+    if (!canReorderSources || !isDragEnabled) return;
     e.dataTransfer.setData("text/plain", sourceIndex.toString());
     e.dataTransfer.effectAllowed = "move";
     setIsDragging(true);
@@ -124,6 +125,7 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
   const handleDragEnd = () => {
     setIsDragging(false);
     setDragOverIndex(null);
+    setIsDragEnabled(false);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -148,6 +150,17 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
     }
     
     setDragOverIndex(null);
+  };
+
+  // Grip icon handlers
+  const handleGripMouseEnter = () => {
+    if (canReorderSources) {
+      setIsDragEnabled(true);
+    }
+  };
+
+  const handleGripMouseLeave = () => {
+    setIsDragEnabled(false);
   };
 
   /**
@@ -190,7 +203,7 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
       } ${
         dragOverIndex === sourceIndex ? "ring-2 ring-blue-500 ring-offset-2" : ""
       }`}
-      draggable={canReorderSources}
+      draggable={isDragEnabled && canReorderSources}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
@@ -209,6 +222,8 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
               <div 
                 className="cursor-grab active:cursor-grabbing p-1 rounded hover:bg-muted transition-colors"
                 title="Drag to reorder sources"
+                onMouseEnter={handleGripMouseEnter}
+                onMouseLeave={handleGripMouseLeave}
               >
                 <GripVertical className="h-4 w-4 text-muted-foreground" />
               </div>

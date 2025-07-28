@@ -4,22 +4,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import HTMLtoDOCX from 'html-to-docx';
 
 /* ==========================================================================*/
-// export-docx/route.ts — DOCX export endpoint
+// export-docx/route.ts — DOCX export endpoint using HTMLtoDOCX
 /* ==========================================================================*/
-// Purpose: Convert article HTML content to DOCX format
-// Uses html-docx-js for serverless-friendly conversion
+// Purpose: Convert article HTML content to DOCX format using HTMLtoDOCX
+// Replicates exact styling from docx library implementation
 
 /* ==========================================================================*/
 // Types
 /* ==========================================================================*/
 
 interface ExportDocxRequest {
+  richContent: string; // Lexical JSON content - always required
   articleHeadline: string;
   articleSlug: string;
   versionDecimal: string;
-  articleHtml?: string;
+  articleHtml?: string; // Pre-converted HTML content
   blobs?: string;
-  createdByName: string;
 }
 
 /* ==========================================================================*/
@@ -29,7 +29,7 @@ interface ExportDocxRequest {
 /**
  * formatBlobsAsHtml
  * 
- * Converts blob text to HTML bullet points
+ * Converts blob text to HTML bullet points with exact styling match
  */
 function formatBlobsAsHtml(blobText: string): string {
   if (!blobText) return '';
@@ -41,36 +41,17 @@ function formatBlobsAsHtml(blobText: string): string {
 
   if (blobItems.length === 0) return '';
 
-  return `
-    <ul style="margin: 20px 0; padding-left: 20px;">
-      ${blobItems.map(blob => `<li style="margin: 8px 0; font-weight: bold;">${blob}</li>`).join('')}
-    </ul>
-    <br/>
-  `;
-}
-
-/**
- * addParagraphSpacing
- * 
- * Adds spacing between paragraphs by inserting breaks
- */
-function addParagraphSpacing(htmlContent: string): string {
-  if (!htmlContent) return htmlContent;
-  
-  // Add spacing after paragraphs, divs, headings, and lists
-  return htmlContent
-    .replace(/<\/p>/g, '</p><br/>')
-    .replace(/<\/div>/g, '</div><br/>')
-    .replace(/<\/h[1-6]>/g, '$&<br/>')
-    .replace(/<\/ul>/g, '</ul><br/>')
-    .replace(/<\/ol>/g, '</ol><br/>')
-    .replace(/<\/blockquote>/g, '</blockquote><br/>');
+  return `<div style="margin-top: 0pt; margin-bottom: 18pt;">
+<ul style="font-family: Times New Roman; font-size: 12pt; margin: 0; padding-left: 0; list-style-position: inside;">
+${blobItems.map(blob => `<li style="margin: 3pt 0;"><strong>${blob}</strong></li>`).join('')}
+</ul>
+</div>`;
 }
 
 /**
  * generateDocxHtml
  * 
- * Creates properly formatted HTML for DOCX conversion
+ * Creates HTML that exactly matches current docx library styling
  */
 function generateDocxHtml(data: ExportDocxRequest, articleHtml: string): string {
   const currentDate = new Date().toLocaleDateString("en-US", {
@@ -82,74 +63,62 @@ function generateDocxHtml(data: ExportDocxRequest, articleHtml: string): string 
 
   const blobsHtml = data.blobs ? formatBlobsAsHtml(data.blobs) : '';
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>
-        body { 
-          font-family: Arial, sans-serif; 
-          line-height: 1.6; 
-          margin: 40px;
-          color: #000;
-        }
-        .metadata { 
-          font-size: 14px; 
-          margin-bottom: 30px;
-          color: #333;
-        }
-        .title { 
-          font-size: 20px; 
-          font-weight: bold; 
-          margin: 30px 0 20px 0;
-          color: #000;
-        }
-        .content {
-          font-size: 16px;
-          line-height: 1.6;
-          margin-top: 20px;
-        }
-        .content p {
-          margin-bottom: 16px;
-        }
-        .content div {
-          margin-bottom: 12px;
-        }
-        ul {
-          padding-left: 20px;
-          margin-bottom: 16px;
-        }
-        ol {
-          padding-left: 20px;
-          margin-bottom: 16px;
-        }
-        li {
-          margin: 8px 0;
-        }
-        h1, h2, h3, h4, h5, h6 {
-          margin-bottom: 12px;
-          margin-top: 20px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="metadata">
-        <p><strong>Slug:</strong> ${data.articleSlug}</p>
-        <p><strong>Version:</strong> ${data.versionDecimal}</p>
-        <p><strong>Export by:</strong> sesha systems <strong>on:</strong> ${currentDate}</p>
-      </div>
-      
-      <h1 class="title">${data.articleHeadline}</h1>
-      
-      ${blobsHtml}
-      
-      <div class="content">
-        ${articleHtml}
-      </div>
-    </body>
-    </html>
-  `;
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body { 
+  font-family: Times New Roman, serif; 
+  font-size: 12pt;
+  line-height: 1.2;
+  margin: 72pt 90pt 72pt 90pt;
+  color: black;
+}
+.metadata { 
+  font-family: Arial, sans-serif;
+  font-size: 9pt; 
+  margin-bottom: 24pt;
+  text-decoration: underline;
+}
+.title { 
+  font-size: 14pt; 
+  font-weight: bold; 
+  text-align: center;
+  margin: 12pt 0;
+}
+.content {
+  margin-top: 18pt;
+}
+/* Spacer paragraph styles in CSS */
+.content p {
+  margin: 8pt 0;
+}
+strong, b { font-weight: bold; }
+em, i { font-style: italic; }
+u { text-decoration: underline; }
+ul { margin: 6pt 0; padding-left: 0; list-style-position: inside; }
+li { margin: 3pt 0; }
+</style>
+</head>
+<body>
+<p style="font-family: Arial, sans-serif; font-size: 9pt; margin-bottom: 0pt;"><u><strong>Slug:</strong> ${data.articleSlug} <strong>Version:</strong> ${data.versionDecimal} <strong>Export by:</strong> sesha systems <strong>on:</strong> ${currentDate}</u></p>
+  
+  <h1 style="font-size: 14pt; font-weight: bold; text-align: center; margin: 12pt 0 0 0;">${data.articleHeadline}</h1>
+  
+  <p style="font-size:1pt; line-height:1pt; margin:0 0 24pt 0;">&nbsp;</p>
+  <p style="font-size:1pt; line-height:1pt; margin:0 0 24pt 0;">&nbsp;</p>
+  
+  ${blobsHtml}
+  
+  <p style="font-size:1pt; line-height:1pt; margin:0 0 24pt 0;">&nbsp;</p>
+  <p style="font-size:1pt; line-height:1pt; margin:0 0 24pt 0;">&nbsp;</p>
+  
+  <div class="content">
+${articleHtml}
+</div>
+</body>
+</html>`;
 }
 
 /* ==========================================================================*/
@@ -158,85 +127,61 @@ function generateDocxHtml(data: ExportDocxRequest, articleHtml: string): string 
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("📄 DOCX Export request received");
-    const body: ExportDocxRequest = await request.json();
-
-    console.log("📄 DOCX Export parsed body:", {
-      headline: body.articleHeadline,
-      slug: body.articleSlug,
-      version: body.versionDecimal,
-      hasArticleHtml: !!body.articleHtml,
-      hasBlobs: !!body.blobs,
-      createdByName: body.createdByName
+    const data: ExportDocxRequest = await request.json();
+    
+    console.log("📄 DOCX request data:", {
+      hasRichContent: !!data.richContent,
+      hasArticleHtml: !!data.articleHtml,
+      headline: data.articleHeadline,
+      slug: data.articleSlug,
+      version: data.versionDecimal,
+      hasBlobs: !!data.blobs
     });
-
+    
     // Validate required fields
-    if (!body.articleHeadline || !body.articleSlug || !body.versionDecimal) {
-      console.error("❌ Missing required fields:", { 
-        hasHeadline: !!body.articleHeadline, 
-        hasSlug: !!body.articleSlug, 
-        hasVersion: !!body.versionDecimal 
-      });
-      return NextResponse.json(
-        { error: 'Missing required fields: articleHeadline, articleSlug, and versionDecimal are required' }, 
-        { status: 400 }
-      );
+    if (!data.articleHeadline || !data.articleSlug || !data.versionDecimal) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    console.log("✅ Validation passed");
+    console.log("🚀 Starting DOCX export with HTMLtoDOCX");
 
-    // Use the pre-converted HTML from client
-    const articleHtml = body.articleHtml || '';
-    console.log("📄 Article HTML length:", articleHtml.length);
-
-    // Add spacing between paragraphs
-    const spacedArticleHtml = addParagraphSpacing(articleHtml);
-    console.log("📄 Added paragraph spacing, new length:", spacedArticleHtml.length);
+    // Use the pre-converted HTML from export-utils.ts
+    const articleHtml = data.articleHtml || '';
 
     // Generate formatted HTML for DOCX
-    console.log("📄 Generating HTML content for DOCX...");
-    const htmlContent = generateDocxHtml(body, spacedArticleHtml);
+    const htmlContent = generateDocxHtml(data, articleHtml);
     console.log("📄 Generated HTML content length:", htmlContent.length);
+    console.log("📄 HTML preview:", htmlContent.substring(0, 500) + "...");
 
-    // Convert HTML to DOCX
+    // Convert HTML to DOCX with simplified settings
     console.log("📄 Converting HTML to DOCX...");
-    let docxBuffer;
-    try {
-      docxBuffer = await HTMLtoDOCX(htmlContent, null, {
-        table: { row: { cantSplit: true } },
-        footer: true,
-        pageNumber: true,
-      });
-      console.log("✅ DOCX conversion successful, buffer type:", typeof docxBuffer);
-    } catch (conversionError) {
-      console.error("❌ DOCX conversion failed:", conversionError);
-      throw new Error(`DOCX conversion failed: ${conversionError instanceof Error ? conversionError.message : 'Unknown conversion error'}`);
+    const docxBuffer = await HTMLtoDOCX(htmlContent, null, {
+      footer: true,
+      pageNumber: true,
+      orientation: 'portrait'
+    });
+    
+    console.log("✅ DOCX export completed successfully, buffer size:", docxBuffer.length);
+    
+    // Validate buffer
+    if (!docxBuffer || docxBuffer.length === 0) {
+      throw new Error("Generated DOCX buffer is empty");
     }
-
-    // Generate filename
-    const sanitizedSlug = body.articleSlug.replace(/[^a-zA-Z0-9-_]/g, '_');
-    const filename = `${sanitizedSlug}_v${body.versionDecimal}.docx`;
-
-    console.log("✅ DOCX generated successfully:", filename);
-
+    
     // Return the DOCX file
     return new NextResponse(docxBuffer, {
-      status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': docxBuffer.byteLength ? docxBuffer.byteLength.toString() : docxBuffer.length.toString(),
+        'Content-Disposition': `attachment; filename="${data.articleSlug}-v${data.versionDecimal}.docx"`,
+        'Content-Length': docxBuffer.length.toString(),
       },
     });
-
   } catch (error) {
-    console.error('❌ Error in DOCX export route:', error);
-    return NextResponse.json(
-      { 
-        error: 'Failed to generate DOCX file',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }, 
-      { status: 500 }
-    );
+    console.error("❌ DOCX export error:", error);
+    console.error("❌ Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+    return NextResponse.json({ 
+      error: "Failed to generate DOCX",
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 } 

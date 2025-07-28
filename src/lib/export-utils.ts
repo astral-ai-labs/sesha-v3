@@ -16,6 +16,7 @@ import { ListNode, ListItemNode } from "@lexical/list";
 import { CodeNode, CodeHighlightNode } from "@lexical/code";
 import { LinkNode } from "@lexical/link";
 import { TableNode, TableRowNode, TableCellNode } from "@lexical/table";
+import * as cheerio from "cheerio";
 
 /* ==========================================================================*/
 // Types and Interfaces
@@ -43,6 +44,7 @@ export interface EmailExportData {
   content?: string;
   articleHtml?: string;
   blobs?: string;
+  emailType?: 'completion' | 'export';
 }
 
 export interface DocxExportData {
@@ -52,6 +54,7 @@ export interface DocxExportData {
   articleHtml?: string;
   blobs?: string;
   createdByName: string;
+  richContent?: string | null; // Added richContent to DocxExportData
 }
 
 export interface PdfExportData {
@@ -92,9 +95,34 @@ function convertRichContentToHtml(richContentJson: string, fallbackContent?: str
     editor.setEditorState(importedState);
 
     // Now read the HTML from the editor state
-    return editor.read(() => {
+    const html = editor.read(() => {
       return $generateHtmlFromNodes(editor, null);
     });
+    
+    console.log("🔍 Generated HTML from Lexical:");
+    console.log("HTML length:", html.length);
+    console.log("HTML preview:", html.substring(0, 1000));
+    
+    // Check for specific styling elements
+    const $ = cheerio.load(html);
+    console.log("📊 HTML Analysis:");
+    console.log("- Strong tags:", $('strong').length);
+    console.log("- Bold tags:", $('b').length);
+    console.log("- Italic tags:", $('em, i').length);
+    console.log("- Underline tags:", $('u').length);
+    console.log("- Span tags:", $('span').length);
+    console.log("- Spans with style:", $('span[style]').length);
+    
+    // Show sample spans with styling
+    $('span[style]').slice(0, 3).each((index, element) => {
+      const $el = $(element);
+      console.log(`  Sample span ${index + 1}:`, {
+        text: $el.text().substring(0, 50),
+        style: $el.attr('style')
+      });
+    });
+    
+    return html;
   } catch (error) {
     console.error("Error converting richContent to HTML:", error);
     return fallbackContent || "";
@@ -170,6 +198,7 @@ async function sendArticleEmail(article: ArticleData, recipients: string[], cust
     content: customContent?.trim(),
     articleHtml: articleHtml,
     blobs: article.blob || undefined,
+    emailType: 'export',
   };
 
   const response = await fetch("/api/send", {
@@ -200,12 +229,13 @@ async function sendArticleEmail(article: ArticleData, recipients: string[], cust
  */
 async function exportArticleAsDocx(article: ArticleData): Promise<void> {
   const articleHtml = prepareArticleHtml(article);
-
+  
   const docxData: DocxExportData = {
     articleHeadline: article.headline,
     articleSlug: article.slug,
     versionDecimal: article.versionDecimal,
-    articleHtml: articleHtml,
+    richContent: article.richContent || '', // Send Lexical JSON directly
+    articleHtml: articleHtml, // Send converted HTML for HTMLtoDOCX
     blobs: article.blob || undefined,
     createdByName: article.createdByName,
   };

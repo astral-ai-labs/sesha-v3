@@ -391,7 +391,7 @@ function ArticleHeader() {
       {/* End of Header Section ---- */}
 
       {/* Start of Article Info Section --- */}
-      <div className="space-y-2 pt-3">
+      <div className="space-y-2 pt-">
         {/* Start of Headline Row --- */}
         <h1 className="text-[24px] line-clamp-2 font-semibold leading-wide">{headline}</h1>
         {/* End of Headline Row ---- */}

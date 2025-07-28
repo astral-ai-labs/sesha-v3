@@ -39,10 +39,9 @@ function formatBlobsAsHtml(blobText: string): string {
   if (blobItems.length === 0) return '';
 
   return `
-    <ul style="margin: 20px 0; padding-left: 20px;">
-      ${blobItems.map(blob => `<li style="margin: 8px 0; font-weight: bold;">${blob}</li>`).join('')}
+    <ul style="margin: 24px 0; padding-left: 20px;">
+      ${blobItems.map(blob => `<li style="margin: 4px 0; font-weight: bold;">${blob}</li>`).join('')}
     </ul>
-    <br/>
   `;
 }
 
@@ -82,75 +81,78 @@ function generatePdfHtml(data: ExportPdfRequest, articleHtml: string): string {
     <html>
     <head>
       <meta charset="utf-8">
+      <title>${data.articleHeadline} - ${data.articleSlug}</title>
       <style>
         @page {
-          margin: 40px;
+          margin: 90px 120px 80px 120px;
           size: A4;
         }
         
         body { 
-          font-family: Arial, sans-serif; 
-          line-height: 1.6; 
+          font-family: "Times New Roman", Times, serif; 
+          line-height: 1.3; 
           margin: 0;
           color: #000;
           font-size: 14px;
         }
         
         .metadata { 
-          font-size: 12px; 
-          margin-bottom: 30px;
+          font-family: Arial, sans-serif;
+          font-size: 11px; 
+          margin-bottom: 15px;
           color: #333;
-          border-bottom: 1px solid #eee;
-          padding-bottom: 15px;
+          text-decoration: underline;
         }
         
         .metadata p {
-          margin: 5px 0;
+          margin: 0;
         }
         
         .title { 
           font-size: 18px; 
           font-weight: bold; 
-          margin: 30px 0 20px 0;
+          text-align: center;
+          margin: 25px 0 20px 0;
           color: #000;
           page-break-after: avoid;
         }
         
         .content {
           font-size: 14px;
-          line-height: 1.6;
-          margin-top: 20px;
+          line-height: 1.3;
+          margin-top: 15px;
         }
         
         .content p {
-          margin-bottom: 6px;
           page-break-inside: avoid;
           orphans: 2;
           widows: 2;
         }
         
         .content div {
-          margin-bottom: 4px;
+          margin-bottom: 6px;
         }
         
         ul {
           padding-left: 20px;
-          margin-bottom: 6px;
+          margin-bottom: 20px;
+          margin-top: 0px;
         }
         
         ol {
           padding-left: 20px;
-          margin-bottom: 6px;
+          margin-bottom: 8px;
         }
         
         li {
-          margin: 6px 0;
+          margin: 4px 0;
           page-break-inside: avoid;
+          font-weight: bold;
         }
         
         h1, h2, h3, h4, h5, h6 {
-          margin-bottom: 10px;
-          margin-top: 16px;
+          margin-bottom: 8px;
+          margin-top: 12px;
           page-break-after: avoid;
           page-break-inside: avoid;
         }
@@ -164,7 +166,7 @@ function generatePdfHtml(data: ExportPdfRequest, articleHtml: string): string {
         
         blockquote {
           border-left: 3px solid #ccc;
-          margin: 10px 0;
+          margin: 2px 0;
           padding-left: 15px;
           font-style: italic;
         }
@@ -186,13 +188,26 @@ function generatePdfHtml(data: ExportPdfRequest, articleHtml: string): string {
           background-color: #f2f2f2;
           font-weight: bold;
         }
+        
+        @page {
+          @bottom-left {
+            content: counter(page);
+            font-family: "Times New Roman", Times, serif;
+            font-size: 14px;
+            color: #000;
+            margin-bottom: 40px;
+            margin-bottom: 10px;
+          }
+        }
+        
+        body {
+          counter-reset: page;
+        }
       </style>
     </head>
     <body>
       <div class="metadata">
-        <p><strong>Slug:</strong> ${data.articleSlug}</p>
-        <p><strong>Version:</strong> ${data.versionDecimal}</p>
-        <p><strong>Export by:</strong> sesha systems <strong>on:</strong> ${currentDate}</p>
+        <p><strong>Slug:</strong> ${data.articleSlug} <strong>Version:</strong> ${data.versionDecimal} <strong>Export by:</strong> sesha systems <strong>on:</strong> ${currentDate}</p>
       </div>
       
       <h1 class="title">${data.articleHeadline}</h1>
@@ -294,7 +309,7 @@ export async function POST(request: NextRequest) {
       format: 'A4',
       margin: {
         top: '20px',
-        bottom: '20px',
+        bottom: '30px',
         left: '20px',
         right: '20px'
       },

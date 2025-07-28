@@ -73,7 +73,7 @@ function ArticleContentPanel() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-1 overflow-y-auto px-6 pt-6 space-y-8">
+      <div className="flex-1 overflow-y-auto px-6 pt-4 space-y-8">
         <ArticleHeader />
         <ArticleOutline />
         <ArticleContent />
