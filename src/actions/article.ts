@@ -21,7 +21,7 @@ import { getAuthenticatedUserServer } from "@/lib/supabase/server";
 import { extractSourcesFromArticle } from "@/lib/utils";
 
 // DAL ---
-import { createArticleRecord, updateArticle, getOrgArticlesMetadataPaginated, getOrgArticlesCount, getArticleByOrgSlugVersion, archiveArticle, unarchiveArticle } from "@/db/dal";
+import { createAiArticleRecord, createHumanEditedVersion, updateArticle, getOrgArticlesMetadataPaginated, getOrgArticlesCount, getArticleByOrgSlugVersion, archiveArticle, unarchiveArticle } from "@/db/dal";
 
 import type { ArticleMetadata } from "@/db/dal";
 
@@ -56,22 +56,26 @@ interface CheckArticleStatusResult {
 /* ==========================================================================*/
 
 /**
- * createNewVersionAction
+ * createNewAiVersionAction
  *
- * Server action to create a new version of an article with updated data.
+ * Server action to create a new AI-generated version of an article.
+ * Creates a new major version (e.g., 3.xx → 4.00).
  * Requires authentication and redirects to the new version.
  *
  * @param currentArticle - The current article to create a new version from
  * @param updates - Updated fields for the new version
  * @returns Success/error result with new article data
  */
-export async function createNewVersionAction(currentArticle: Article, updates: Partial<Article>): Promise<CreateNewVersionResult> {
-  console.log("🚀 createNewVersionAction called with:", {
-    articleId: currentArticle.id,
-    slug: currentArticle.slug,
-    currentVersion: currentArticle.version,
-    updates,
-  });
+export async function createNewAiVersionAction(currentArticle: Article, updates: Partial<Article>): Promise<CreateNewVersionResult> {
+  // console.log("🚀 createNewVersionAction called with:", {
+  //   articleId: currentArticle.id,
+  //   slug: currentArticle.slug,
+  //   currentVersion: currentArticle.version,
+  //   updates: {
+  //     ...updates,
+  //     richContent: updates.richContent ? "Has rich content" : "No rich content"
+  //   },
+  // });
 
   try {
     // Authentication check
@@ -89,7 +93,9 @@ export async function createNewVersionAction(currentArticle: Article, updates: P
         userId: user.id,
         orgId: user.orgId.toString(),
         currentVersion: currentArticle.version, // This will increment to currentVersion + 1
+        currentVersionDecimal: currentArticle.versionDecimal, // This will increment to next major version
       },
+      sourceType: currentArticle.sourceType,
       slug: currentArticle.slug,
       headline: updates.headline || currentArticle.headline || "",
       sources: extractSourcesFromArticle(currentArticle),
@@ -100,10 +106,10 @@ export async function createNewVersionAction(currentArticle: Article, updates: P
       },
     };
 
-    console.log("📝 Creating new version with data:", newVersionData);
+    // console.log("📝 Creating new version with data:", newVersionData);
 
     // Create the new article version
-    const newArticle = await createArticleRecord(newVersionData);
+    const newArticle = await createAiArticleRecord(newVersionData);
 
     console.log("✅ New article version created with ID:", newArticle.id);
 
@@ -111,13 +117,20 @@ export async function createNewVersionAction(currentArticle: Article, updates: P
     const fieldsToUpdate = {
       ...(updates.blob !== undefined && { blob: updates.blob }),
       ...(updates.content !== undefined && { content: updates.content }),
+      ...(updates.richContent !== undefined && { richContent: updates.richContent }),
       ...(updates.status !== undefined && { status: updates.status }),
       ...(updates.headline !== undefined && { headline: updates.headline }),
     };
 
+    // console.log("📝 Fields to update in new article:", {
+    //   ...fieldsToUpdate,
+    //   richContent: fieldsToUpdate.richContent ? "Has rich content" : "No rich content"
+    // });
+
     if (Object.keys(fieldsToUpdate).length > 0) {
-      console.log("📝 Updating new article with additional fields:", fieldsToUpdate);
-      await updateArticle(newArticle.id, user.id, fieldsToUpdate);
+      // console.log("📝 Updating new article with additional fields:", fieldsToUpdate);
+      const updateResult = await updateArticle(newArticle.id, user.id, fieldsToUpdate);
+      console.log("📥 Update result:", updateResult ? "Success" : "Failed");
     }
 
     // Revalidate the article page to show the new version
@@ -132,10 +145,79 @@ export async function createNewVersionAction(currentArticle: Article, updates: P
     // Redirect to the new version
     // redirect(`/article?slug=${currentArticle.slug}&version=${currentArticle.version + 1}`);
   } catch (error) {
-    console.error("❌ createNewVersionAction failed with error:", error);
+    console.error("❌ createNewAiVersionAction failed with error:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to create new version",
+      error: error instanceof Error ? error.message : "Failed to create new AI version",
+    };
+  }
+}
+
+/**
+ * createHumanEditedVersionAction
+ *
+ * Server action to create a new human-edited version of an article.
+ * Creates an incremental version (e.g., 3.00 → 3.01, 3.01 → 3.02).
+ * Requires authentication.
+ *
+ * @param currentArticle - The current article to create a new version from
+ * @param updates - Updated fields for the new version
+ * @returns Success/error result with new article data
+ */
+export async function createHumanEditedVersionAction(currentArticle: Article, updates: Partial<Article>): Promise<CreateNewVersionResult> {
+  // console.log("🚀 createHumanEditedVersionAction called with:", {
+  //   articleId: currentArticle.id,
+  //   slug: currentArticle.slug,
+  //   currentVersionDecimal: currentArticle.versionDecimal,
+  //   updates: {
+  //     ...updates,
+  //     richContent: updates.richContent ? "Has rich content" : "No rich content"
+  //   },
+  // });
+
+  try {
+    // Authentication check
+    const user = await getAuthenticatedUserServer();
+    if (!user) {
+      console.log("❌ No authenticated user, redirecting to login");
+      redirect("/login");
+    }
+
+    console.log("✅ User authenticated:", user.id);
+
+    // Prepare updates for human-edited version
+    const fieldsToUpdate = {
+      ...(updates.blob !== undefined && { blob: updates.blob }),
+      ...(updates.content !== undefined && { content: updates.content }),
+      ...(updates.richContent !== undefined && { richContent: updates.richContent }),
+      ...(updates.status !== undefined && { status: updates.status }),
+      ...(updates.headline !== undefined && { headline: updates.headline }),
+    };
+
+    // console.log("📝 Creating human-edited version with updates:", {
+    //   ...fieldsToUpdate,
+    //   richContent: fieldsToUpdate.richContent ? "Has rich content" : "No rich content"
+    // });
+
+    // Create the new human-edited version
+    const newArticle = await createHumanEditedVersion(currentArticle, user.id, fieldsToUpdate);
+
+    console.log("✅ New human-edited version created with ID:", newArticle.id, "and decimal version:", newArticle.versionDecimal);
+
+    // Revalidate the article page to show the new version
+    console.log("🔄 Revalidating path:", `/article?slug=${currentArticle.slug}`);
+    revalidatePath(`/article?slug=${currentArticle.slug}`);
+
+    return {
+      success: true,
+      article: newArticle,
+    };
+
+  } catch (error) {
+    console.error("❌ createHumanEditedVersionAction failed with error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create human-edited version",
     };
   }
 }
@@ -182,12 +264,18 @@ export async function loadArticlesAction(offset: number = 0, limit: number = 50)
  *
  * Server action to check the current status of an article by slug and version.
  * Used for live polling of articles with running statuses.
+ * Supports both integer and decimal version lookup.
  *
  * @param slug - The article slug
- * @param version - The article version
+ * @param version - The article integer version (optional)
+ * @param versionDecimal - The article decimal version (optional)
  * @returns Current article data or error
  */
-export async function checkArticleStatusAction(slug: string, version: number): Promise<CheckArticleStatusResult> {
+export async function checkArticleStatusAction(
+  slug: string, 
+  version?: number, 
+  versionDecimal?: string
+): Promise<CheckArticleStatusResult> {
   try {
     // Authentication check
     const user = await getAuthenticatedUserServer();
@@ -196,7 +284,7 @@ export async function checkArticleStatusAction(slug: string, version: number): P
     }
 
     // Get the current article status
-    const article = await getArticleByOrgSlugVersion(user.orgId, slug, version);
+    const article = await getArticleByOrgSlugVersion(user.orgId, slug, versionDecimal);
 
     if (!article) {
       return {

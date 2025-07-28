@@ -130,11 +130,11 @@ export async function POST(request: NextRequest) {
     );
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-step07-${Date.now()}`);
+    const logger = createPipelineLogger(`route-step07-${Date.now()}`, 'digest');
     logger.logStepPrompts(7, "Sentence Per Line Attribution", systemPrompt, userPrompt);
 
     // Generate structured object using AI SDK
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model,
       system: systemPrompt,
       messages: [
@@ -159,6 +159,14 @@ export async function POST(request: NextRequest) {
     // Build response - only AI data
     const response: Step07SentencePerLineAttributionAIResponse = {
       formattedArticle: cleanedText,
+      usage: [
+        {
+          inputTokens: usage?.promptTokens ?? 0,
+          outputTokens: usage?.completionTokens ?? 0,
+          model: model.modelId,
+          ...usage
+        },
+      ],
     };
 
     logger.logStepResponse(7, "Sentence Per Line Attribution", response);
@@ -172,6 +180,7 @@ export async function POST(request: NextRequest) {
 
     const errorResponse: Step07SentencePerLineAttributionAIResponse = {
       formattedArticle: "",
+      usage: [],
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

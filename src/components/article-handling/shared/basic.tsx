@@ -45,7 +45,12 @@ function BasicArticleInputs() {
   const handleInstructionsExpandToggle = () => setInstructionsExpanded((p) => !p);
 
   const handleSubmit = async () => {
-    // Build request data compatible with both modes
+
+    // Debug logging to see what mode is being used
+    console.log("🚀 handleGoClick - current mode:", mode);
+    console.log("🚀 handleGoClick - sources count:", sources.length);
+    
+        // Build request data compatible with both modes
     const requestData = {
       slug: basic.slug,
       headline: basic.headline,
@@ -53,6 +58,7 @@ function BasicArticleInputs() {
         description: source.usage.description,
         accredit: source.usage.accredit,
         sourceText: source.usage.sourceText,
+        url: source.url, // Add URL field
         verbatim: source.usage.verbatim,
         primary: source.usage.primary,
         base: source.usage.base,
@@ -81,7 +87,9 @@ function BasicArticleInputs() {
     <div className="space-y-6 px-2">
       {/* Header --- */}
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-foreground">Basic Info</h2>
+        <h2 className="text-lg font-semibold text-foreground">
+          {mode === "single" ? "Digest Basic Info" : "Aggregator Basic Info"}
+        </h2>
         <Button onClick={handleSubmit} disabled={!canSubmit || isLoading} className="bg-blue-500 hover:bg-blue-600">
           {isLoading ? (
             <>

@@ -15,7 +15,7 @@
 import React from "react";
 
 // Next.js ---
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 // External Packages ---
 import { useInView } from "react-intersection-observer";
@@ -49,10 +49,12 @@ function LibraryClient() {
   const [isLoading, setIsLoading] = React.useState(true); // initial load flag
   const [isLoadingMore, setIsLoadingMore] = React.useState(false);
   const [hasMore, setHasMore] = React.useState(true);
+  const [isFetchingArticle, setIsFetchingArticle] = React.useState(false);
 
   /* --------------------------- URL Parameters ---------------------------- */
   const searchParams = useSearchParams();
   const articleId = searchParams.get("id");
+  const router = useRouter();
 
   /* ------------------------- Infinite Scroll Setup ----------------------- */
   const { ref: loadMoreRef, inView } = useInView({ threshold: 0, rootMargin: "100px" });
@@ -166,6 +168,12 @@ function LibraryClient() {
     }
   }, [activeArticles]);
 
+  /* ----------------------- Article Navigation ---------------------------- */
+  const handleArticleNavigation = React.useCallback((slug: string, version: string) => {
+    setIsFetchingArticle(true);
+    router.push(`/article?slug=${encodeURIComponent(slug)}&version=${encodeURIComponent(version)}`);
+  }, [router]);
+
   /* ----------------------- Pipeline Execution ---------------------------- */
   const executeArticlePipeline = React.useCallback(async (id: string) => {
     try {
@@ -232,6 +240,14 @@ function LibraryClient() {
     );
   }
 
+  if (isFetchingArticle) {
+    return (
+      <div className="flex justify-center py-8">
+        <div className="text-sm text-muted-foreground">Fetching article...</div>
+      </div>
+    );
+  }
+
   return (
     <>
       {activeArticles.length > 0 && (
@@ -243,7 +259,7 @@ function LibraryClient() {
         </div>
       )}
 
-      <ArticleDataTable articles={articles} isLoading={isLoadingMore} />
+      <ArticleDataTable articles={articles} isLoading={isLoadingMore} onArticleClick={handleArticleNavigation} onArticlesChanged={loadInitialArticles} />
 
       {hasMore && (
         <div ref={loadMoreRef} className="flex justify-center py-8">

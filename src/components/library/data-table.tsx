@@ -14,7 +14,6 @@
 
 // React core ---------------------------------------------------------------
 import React from "react";
-import { useRouter } from "next/navigation";
 
 // External Packages --------------------------------------------------------
 import { flexRender, getCoreRowModel, getFilteredRowModel, getSortedRowModel, type ColumnFiltersState, type SortingState, type VisibilityState, useReactTable, ColumnDef } from "@tanstack/react-table";
@@ -38,6 +37,10 @@ interface ArticleDataTableProps {
   articles: ArticleMetadata[];
   /** Whether more articles are being loaded */
   isLoading?: boolean;
+  /** Callback for article navigation */
+  onArticleClick?: (slug: string, version: string) => void;
+  /** Callback for when articles are archived/unarchived */
+  onArticlesChanged?: () => void;
 }
 
 /* ==========================================================================*/
@@ -53,8 +56,7 @@ interface ArticleDataTableProps {
  * @param articles - Raw rows to display
  * @param isLoading - Whether more articles are being loaded
  */
-function ArticleDataTable({ articles, isLoading = false }: ArticleDataTableProps) {
-  const router = useRouter();
+function ArticleDataTable({ articles, isLoading = false, onArticleClick, onArticlesChanged }: ArticleDataTableProps) {
 
   /* -------------------------------- State -------------------------------- */
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -111,6 +113,9 @@ function ArticleDataTable({ articles, isLoading = false }: ArticleDataTableProps
       
       // Clear selection
       table.toggleAllRowsSelected(false);
+      
+      // Notify parent to refresh articles
+      onArticlesChanged?.();
     } catch (error) {
       console.error('Failed to archive articles:', error);
     } finally {
@@ -129,6 +134,9 @@ function ArticleDataTable({ articles, isLoading = false }: ArticleDataTableProps
       
       // Clear selection
       table.toggleAllRowsSelected(false);
+      
+      // Notify parent to refresh articles
+      onArticlesChanged?.();
     } catch (error) {
       console.error('Failed to unarchive articles:', error);
     } finally {
@@ -151,7 +159,10 @@ function ArticleDataTable({ articles, isLoading = false }: ArticleDataTableProps
       return;
     }
 
-    router.push(`/article?slug=${encodeURIComponent(row.slug)}&version=${row.version}`);
+    // Use callback for navigation if provided
+    if (onArticleClick) {
+      onArticleClick(row.slug, row.versionDecimal);
+    }
   };
 
   /* ----------------------------- Render ---------------------------------- */
@@ -187,7 +198,11 @@ function ArticleDataTable({ articles, isLoading = false }: ArticleDataTableProps
           <Button
             variant={showArchived ? "default" : "outline"}
             size="sm"
-            onClick={() => setShowArchived(!showArchived)}
+            onClick={() => {
+              setShowArchived(!showArchived);
+              // Clear selection when switching views
+              table.toggleAllRowsSelected(false);
+            }}
           >
             {showArchived ? "Hide Archived" : "Show Archived"}
           </Button>
@@ -232,7 +247,7 @@ function ArticleDataTable({ articles, isLoading = false }: ArticleDataTableProps
 
       {/* Data table */}
       <div className="rounded-md border overflow-x-auto">
-        <Table className="min-w-[1020px]">
+        <Table className="min-w-[1100px]">
           <TableHeader className="bg-gray-100">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>

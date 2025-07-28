@@ -5,7 +5,7 @@ import {
   LayoutDashboard,
   Newspaper,
   Library,
-  // Layers
+  Layers
 } from "lucide-react";
 import Link from "next/link";
 
@@ -33,11 +33,11 @@ export function MainNavigation() {
       url: "/digest",
       icon: Newspaper,
     },
-    // {
-    //   title: "Aggregator",
-    //   url: "/aggregator",
-    //   icon: Layers,
-    // },
+    {
+      title: "Aggregator",
+      url: "/aggregator",
+      icon: Layers,
+    },
     {
       title: "Library",
       url: "/library",

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
-import { createUser } from "@/db/dal";
+import { createUserWithId } from "@/db/dal";
 
 /* ==========================================================================*/
 /* Types */
@@ -78,7 +78,6 @@ export async function signup(
     orgId: formData.get("orgId") as string,
   };
 
-  console.log("🚀 rawData:", rawData);
 
   // Validate the input data
   const validationResult = signupSchema.safeParse(rawData);
@@ -115,7 +114,8 @@ export async function signup(
 
   // Create user record in our database
   try {
-    await createUser({
+    await createUserWithId({
+      id: authData.user.id,
       email,
       firstName,
       lastName,
@@ -128,14 +128,14 @@ export async function signup(
     // For now, just return an error
     console.error("Database user creation failed:", dbError);
     return {
-      errors: {},
+      errors: {}, 
       message: "Failed to complete registration. Please contact support.",
     };
   }
 
   // Success - redirect to digest page
   revalidatePath("/", "layout");
-  redirect("/login?verify=true");
+  redirect("/digest");
 }
 
 /* ==========================================================================*/

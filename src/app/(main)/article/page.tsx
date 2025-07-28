@@ -17,9 +17,7 @@ import { redirect } from "next/navigation";
 // Local Modules ---
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import Versions from "@/components/article/versions";
-import ArticleHeader from "@/components/article/article-header";
-import ArticleOutline from "@/components/article/article-outline";
-import ArticleContent from "@/components/article/article-content";
+import ArticleContentPanel from "@/components/article/article-content-panel";
 import { ArticleProvider } from "@/components/article/article-context";
 
 // Authentication ---
@@ -39,11 +37,7 @@ import { getArticlesByOrgSlug } from "@/db/dal";
  * Uses 70/30 split with user-adjustable resize handle.
  * Provides article context to child components for version management.
  */
-async function ArticlePage({ 
-  searchParams 
-}: { 
-  searchParams: Promise<{ slug?: string; version?: string }> 
-}) {
+async function ArticlePage({ searchParams }: { searchParams: Promise<{ slug?: string; version?: string }> }) {
   // Authentication ---
   const user = await getAuthenticatedUserServer();
   if (!user) {
@@ -52,7 +46,7 @@ async function ArticlePage({
 
   // Parse search parameters ---
   const { slug, version } = await searchParams;
-  
+
   if (!slug) {
     redirect("/library");
   }
@@ -65,18 +59,13 @@ async function ArticlePage({
   }
 
   return (
-    <ArticleProvider articles={articles} initialVersion={version ? Number(version) : undefined}>
+    <ArticleProvider articles={articles} initialVersionDecimal={version ? version : undefined} key={`${slug}-${version || "latest"}`}>
+
       <div className="h-[calc(100vh-4rem)] group-has-data-[collapsible=icon]/sidebar-wrapper:h-[calc(100vh-3rem)] transition-[height] ease-linear">
         <ResizablePanelGroup direction="horizontal" className="h-full">
           {/* Start of Left Panel --- */}
           <ResizablePanel defaultSize={70} minSize={65} maxSize={75} className="">
-            <div className="h-full flex flex-col">
-              <div className="flex-1 overflow-y-auto px-6 pt-6 space-y-8">
-                <ArticleHeader />
-                <ArticleOutline />
-                <ArticleContent />
-              </div>
-            </div>
+            <ArticleContentPanel />
           </ResizablePanel>
           {/* End of Left Panel ---- */}
 

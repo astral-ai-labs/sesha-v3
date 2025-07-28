@@ -31,6 +31,8 @@ async function RegisterPage({ searchParams }: { searchParams: Promise<{ orgId?: 
   // Parse search parameters ---
   const { orgId } = await searchParams;
 
+  console.log("orgId", orgId);
+
   return (
     <div className="space-y-6">
       {/* Start of Header --- */}
