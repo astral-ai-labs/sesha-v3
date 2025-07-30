@@ -18,7 +18,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 // Lucide Icons ---
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronsLeft, ChevronsRight } from "lucide-react";
 
 // Shadcn UI ---
 import { Button } from "@/components/ui/button";
@@ -176,7 +176,7 @@ function Versions({ isCollapsed, onCollapse, onExpand, panelSize }: VersionsProp
                 onClick={onExpand}
                 className="p-1 rounded-md hover:bg-accent transition-colors"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronsLeft className="h-4 w-4" strokeWidth={3} />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">
@@ -200,7 +200,7 @@ function Versions({ isCollapsed, onCollapse, onExpand, panelSize }: VersionsProp
               onClick={onCollapse}
               className="p-1 rounded-md hover:bg-accent transition-colors"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronsRight className="h-4 w-4" strokeWidth={3} />
             </button>
           </TooltipTrigger>
           <TooltipContent side="left">

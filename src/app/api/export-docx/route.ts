@@ -76,13 +76,13 @@ body {
   color: black;
 }
 .metadata { 
-  font-family: Arial, sans-serif;
-  font-size: 9pt; 
+  font-family: Times New Roman, serif;
+  font-size: 11pt; 
   margin-bottom: 24pt;
   text-decoration: underline;
 }
 .title { 
-  font-size: 14pt; 
+  font-size: 18pt; 
   font-weight: bold; 
   text-align: center;
   margin: 12pt 0;
@@ -102,9 +102,9 @@ li { margin: 3pt 0; }
 </style>
 </head>
 <body>
-<p style="font-family: Arial, sans-serif; font-size: 9pt; margin-bottom: 0pt;"><u><strong>Slug:</strong> ${data.articleSlug} <strong>Version:</strong> ${data.versionDecimal} <strong>Export by:</strong> sesha systems <strong>on:</strong> ${currentDate}</u></p>
+<p style="font-family: Times New Roman, serif; font-size: 11pt; margin-bottom: 0pt;"><u><strong>Slug:</strong> ${data.articleSlug} <strong>Version:</strong> ${data.versionDecimal} <strong>Export by:</strong> sesha systems <strong>on:</strong> ${currentDate}</u></p>
   
-  <h1 style="font-size: 14pt; font-weight: bold; text-align: center; margin: 12pt 0 0 0;">${data.articleHeadline}</h1>
+  <h1 style="font-size: 18pt; font-weight: bold; text-align: center; margin: 12pt 0 0 0;">${data.articleHeadline}</h1>
   
   <p style="font-size:1pt; line-height:1pt; margin:0 0 24pt 0;">&nbsp;</p>
   <p style="font-size:1pt; line-height:1pt; margin:0 0 24pt 0;">&nbsp;</p>

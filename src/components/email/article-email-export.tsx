@@ -39,6 +39,8 @@ export function ArticleEmailExport({ articleHeadline, articleSlug, versionDecima
     year: "numeric",
   });
 
+  console.log("articleHtml", articleHtml);
+
   // Format blobs as bullet points
   const formatBlobs = (blobText: string) => {
     if (!blobText) return null;
@@ -114,6 +116,9 @@ export function ArticleEmailExport({ articleHeadline, articleSlug, versionDecima
         {articleHeadline}
       </h1>
 
+      {/* Blobs */}
+      {blobs && blobs.trim() && <div style={{ margin: "0 0 20px 0", padding: "0", border: "none" }}>{formatBlobs(blobs)}</div>}
+
       {/* Article Link */}
       <div style={{ margin: "20px 0", textAlign: "center" }}>
         <a
@@ -133,11 +138,8 @@ export function ArticleEmailExport({ articleHeadline, articleSlug, versionDecima
         </a>
       </div>
 
-      {/* Blobs */}
-      {blobs && blobs.trim() && <div style={{ margin: "0 0 20px 0", padding: "0", border: "none" }}>{formatBlobs(blobs)}</div>}
-
       {/* Article Content */}
-      {articleHtml && articleHtml.trim() && (
+      {/* {articleHtml && articleHtml.trim() && (
         <div
           style={{
             fontSize: "16px",
@@ -149,7 +151,7 @@ export function ArticleEmailExport({ articleHeadline, articleSlug, versionDecima
           }}
           dangerouslySetInnerHTML={{ __html: articleHtml }}
         />
-      )}
+      )} */}
     </div>
   );
 }

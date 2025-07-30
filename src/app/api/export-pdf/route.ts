@@ -97,7 +97,7 @@ function generatePdfHtml(data: ExportPdfRequest, articleHtml: string): string {
         }
         
         .metadata { 
-          font-family: Arial, sans-serif;
+          font-family: "Times New Roman", Times, serif;
           font-size: 11px; 
           margin-bottom: 15px;
           color: #333;
