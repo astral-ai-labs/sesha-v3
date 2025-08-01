@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
 /* ==========================================================================*/
 // export-pdf/route.ts — PDF export endpoint for serverless environments
@@ -25,56 +25,41 @@ interface ExportPdfRequest {
 
 /**
  * formatBlobsAsHtml
- * 
+ *
  * Converts blob text to HTML bullet points
  */
 function formatBlobsAsHtml(blobText: string): string {
-  if (!blobText) return '';
-  
+  if (!blobText) return "";
+
   const blobItems = blobText
-    .split('\n')
-    .map(blob => blob.trim())
-    .filter(blob => blob.length > 0);
+    .split("\n")
+    .map((blob) => blob.trim())
+    .filter((blob) => blob.length > 0);
 
-  if (blobItems.length === 0) return '';
+  if (blobItems.length === 0) return "";
 
-  return `
-    <ul style="margin: 24px 0; padding-left: 20px;">
-      ${blobItems.map(blob => `<li style="margin: 4px 0; font-weight: bold;">${blob}</li>`).join('')}
-    </ul>
-  `;
+  // Return only the UL - let CSS handle the hanging indent on li elements
+  return `<ul style="font-family: Times New Roman; font-size: 12pt; margin: 0;">
+  ${blobItems.map((blob) => `<li><strong>${blob}</strong></li>`).join("")}
+  </ul>`;
 }
 
-/**
- * addParagraphSpacing
- * 
- * Adds minimal spacing between paragraphs for PDF (CSS-controlled)
- */
-function addParagraphSpacing(htmlContent: string): string {
-  if (!htmlContent) return htmlContent;
-  
-  // For PDF, we rely on CSS margins instead of <br/> tags for cleaner spacing
-  // Only add breaks after major sections, not every paragraph
-  return htmlContent
-    .replace(/<\/ul>/g, '</ul><br/>')
-    .replace(/<\/ol>/g, '</ol><br/>')
-    .replace(/<\/blockquote>/g, '</blockquote><br/>');
-}
+
 
 /**
  * generatePdfHtml
- * 
+ *
  * Creates properly formatted HTML for PDF conversion
  */
 function generatePdfHtml(data: ExportPdfRequest, articleHtml: string): string {
   const currentDate = new Date().toLocaleDateString("en-US", {
     weekday: "short",
-    month: "short", 
+    month: "short",
     day: "numeric",
-    year: "numeric"
+    year: "numeric",
   });
 
-  const blobsHtml = data.blobs ? formatBlobsAsHtml(data.blobs) : '';
+  const blobsHtml = data.blobs ? formatBlobsAsHtml(data.blobs) : "";
 
   return `
     <!DOCTYPE html>
@@ -84,71 +69,57 @@ function generatePdfHtml(data: ExportPdfRequest, articleHtml: string): string {
       <title>${data.articleHeadline} - ${data.articleSlug}</title>
       <style>
         @page {
-          margin: 90px 120px 80px 120px;
           size: A4;
+          margin: 62pt 72pt 62pt 72pt;
         }
         
         body { 
           font-family: "Times New Roman", Times, serif; 
-          line-height: 1.3; 
+          line-height: 1.2; 
           margin: 0;
-          color: #000;
-          font-size: 14px;
+          color: black;
+          font-size: 12pt;
         }
         
-        .metadata { 
-          font-family: "Times New Roman", Times, serif;
-          font-size: 11px; 
-          margin-bottom: 15px;
-          color: #333;
-          text-decoration: underline;
-        }
+
         
-        .metadata p {
-          margin: 0;
-        }
-        
-        .title { 
-          font-size: 18px; 
-          font-weight: bold; 
+        .title {
+          font-size: 18pt;
+          font-weight: bold;
           text-align: center;
-          margin: 25px 0 20px 0;
-          color: #000;
+          /* Increase space above title, decrease space below title */
+          margin: 24pt 0;
           page-break-after: avoid;
         }
-        
+
         .content {
-          font-size: 14px;
-          line-height: 1.3;
-          margin-top: 15px;
+          margin-top: 18pt;
         }
         
         .content p {
-          page-break-inside: avoid;
-          orphans: 2;
-          widows: 2;
+          margin: 8pt 0;
         }
         
         .content div {
-          margin-bottom: 6px;
+          margin-bottom: 6pt;
         }
         
         ul {
-          padding-left: 20px;
-          margin-bottom: 20px;
-          margin-top: 0px;
+          /* Add horizontal margins to make blobs tighter/more indented */
+          margin: 6pt 0;
+          padding-left: 20pt;
+          list-style-position: outside;
         }
-        
-        ol {
-          padding-left: 20px;
-          margin-bottom: 8px;
-        }
-        
+
+        /* Standard CSS for list items with hanging indent */
         li {
-          margin: 4px 0;
-          page-break-inside: avoid;
-          font-weight: bold;
+          margin: 6pt 0;
+          padding-left: 2pt;
         }
+
+        strong, b { font-weight: bold; }
+        em, i { font-style: italic; }
+        u { text-decoration: underline; }
         
         h1, h2, h3, h4, h5, h6 {
           margin-bottom: 8px;
@@ -188,17 +159,7 @@ function generatePdfHtml(data: ExportPdfRequest, articleHtml: string): string {
           background-color: #f2f2f2;
           font-weight: bold;
         }
-        
-        @page {
-          @bottom-left {
-            content: counter(page);
-            font-family: "Times New Roman", Times, serif;
-            font-size: 14px;
-            color: #000;
-            margin-bottom: 40px;
-            margin-bottom: 10px;
-          }
-        }
+
         
         body {
           counter-reset: page;
@@ -206,9 +167,7 @@ function generatePdfHtml(data: ExportPdfRequest, articleHtml: string): string {
       </style>
     </head>
     <body>
-      <div class="metadata">
-        <p><strong>Slug:</strong> ${data.articleSlug} <strong>Version:</strong> ${data.versionDecimal} <strong>Export by:</strong> sesha systems <strong>on:</strong> ${currentDate}</p>
-      </div>
+      <p style="font-family: Times New Roman, serif; font-size: 11pt; margin-bottom: 0pt;"><u><strong>Slug:</strong> ${data.articleSlug} <strong>Version:</strong> ${data.versionDecimal} <strong>Export by:</strong> sesha systems <strong>on:</strong> ${currentDate}</u></p>
       
       <h1 class="title">${data.articleHeadline}</h1>
       
@@ -237,56 +196,49 @@ export async function POST(request: NextRequest) {
       version: body.versionDecimal,
       hasArticleHtml: !!body.articleHtml,
       hasBlobs: !!body.blobs,
-      createdByName: body.createdByName
+      createdByName: body.createdByName,
     });
 
     // Validate required fields
     if (!body.articleHeadline || !body.articleSlug || !body.versionDecimal) {
-      console.error("❌ Missing required fields:", { 
-        hasHeadline: !!body.articleHeadline, 
-        hasSlug: !!body.articleSlug, 
-        hasVersion: !!body.versionDecimal 
+      console.error("❌ Missing required fields:", {
+        hasHeadline: !!body.articleHeadline,
+        hasSlug: !!body.articleSlug,
+        hasVersion: !!body.versionDecimal,
       });
-      return NextResponse.json(
-        { error: 'Missing required fields: articleHeadline, articleSlug, and versionDecimal are required' }, 
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing required fields: articleHeadline, articleSlug, and versionDecimal are required" }, { status: 400 });
     }
 
     console.log("✅ Validation passed");
 
     // Use the pre-converted HTML from client
-    const articleHtml = body.articleHtml || '';
+    const articleHtml = body.articleHtml || "";
     console.log("📄 Article HTML length:", articleHtml.length);
-
-    // Add spacing between paragraphs
-    const spacedArticleHtml = addParagraphSpacing(articleHtml);
-    console.log("📄 Added paragraph spacing, new length:", spacedArticleHtml.length);
 
     // Generate formatted HTML for PDF
     console.log("📄 Generating HTML content for PDF...");
-    const htmlContent = generatePdfHtml(body, spacedArticleHtml);
+    const htmlContent = generatePdfHtml(body, articleHtml);
     console.log("📄 Generated HTML content length:", htmlContent.length);
 
     // Configure browser for environment
     console.log("📄 Configuring browser for environment...");
-    const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NODE_ENV === 'production';
-    
+    const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NODE_ENV === "production";
+
     let browser;
     if (!isServerless) {
       // Development/Local: Use regular puppeteer with built-in Chrome
       console.log("📄 Using local puppeteer for development");
-      const puppeteerLocal = await import('puppeteer');
+      const puppeteerLocal = await import("puppeteer");
       browser = await puppeteerLocal.default.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
       });
     } else {
       // Serverless/Production: Use puppeteer-core with serverless Chrome
       console.log("📄 Using puppeteer-core with serverless Chrome");
-      const puppeteerCore = await import('puppeteer-core');
-      const chromium = await import('@sparticuz/chromium');
-      
+      const puppeteerCore = await import("puppeteer-core");
+      const chromium = await import("@sparticuz/chromium");
+
       browser = await puppeteerCore.default.launch({
         args: chromium.default.args,
         executablePath: await chromium.default.executablePath(),
@@ -295,33 +247,33 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("📄 Browser launched, creating PDF...");
-    
+
     const page = await browser.newPage();
-    
+
     // Set content and wait for it to load
-    await page.setContent(htmlContent, { 
-      waitUntil: 'networkidle0',
-      timeout: 30000 
+    await page.setContent(htmlContent, {
+      waitUntil: "networkidle0",
+      timeout: 30000,
     });
 
     // Generate PDF with proper options
     const pdfBuffer = await page.pdf({
-      format: 'A4',
+      format: "A4",
       margin: {
-        top: '20px',
-        bottom: '30px',
-        left: '20px',
-        right: '20px'
+        top: "20px",
+        bottom: "30px",
+        left: "20px",
+        right: "20px",
       },
       printBackground: true,
-      preferCSSPageSize: true
+      preferCSSPageSize: true,
     });
 
     await browser.close();
     console.log("✅ PDF generated successfully, size:", pdfBuffer.length);
 
     // Generate filename
-    const sanitizedSlug = body.articleSlug.replace(/[^a-zA-Z0-9-_]/g, '_');
+    const sanitizedSlug = body.articleSlug.replace(/[^a-zA-Z0-9-_]/g, "_");
     const filename = `${sanitizedSlug}_v${body.versionDecimal}.pdf`;
 
     console.log("✅ PDF export completed:", filename);
@@ -330,20 +282,19 @@ export async function POST(request: NextRequest) {
     return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': pdfBuffer.length.toString(),
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": pdfBuffer.length.toString(),
       },
     });
-
   } catch (error) {
-    console.error('❌ Error in PDF export route:', error);
+    console.error("❌ Error in PDF export route:", error);
     return NextResponse.json(
-      { 
-        error: 'Failed to generate PDF file',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }, 
+      {
+        error: "Failed to generate PDF file",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }
-} 
+}

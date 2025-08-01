@@ -18,6 +18,9 @@ import { LinkNode } from "@lexical/link";
 import { TableNode, TableRowNode, TableCellNode } from "@lexical/table";
 import * as cheerio from "cheerio";
 
+// Local Files ----
+import type { SourceType } from "@/db/schema";
+
 /* ==========================================================================*/
 // Types and Interfaces
 /* ==========================================================================*/
@@ -31,6 +34,7 @@ export interface ArticleData {
   content?: string | null;
   blob?: string | null;
   createdByName: string;
+  sourceType: SourceType;
 }
 
 export interface EmailExportData {
@@ -54,6 +58,7 @@ export interface DocxExportData {
   articleHtml?: string;
   blobs?: string;
   createdByName: string;
+  sourceType: SourceType;
   richContent?: string | null; // Added richContent to DocxExportData
 }
 
@@ -64,6 +69,7 @@ export interface PdfExportData {
   articleHtml?: string;
   blobs?: string;
   createdByName: string;
+  sourceType: SourceType;
 }
 
 /* ==========================================================================*/
@@ -75,15 +81,17 @@ export interface PdfExportData {
  *
  * Converts Lexical richContent JSON to HTML string using Lexical's serialization.
  * Handles all rich text node types and provides fallback on errors.
+ * For single source articles, strips newlines after paragraph tags.
  *
  * @param richContentJson - Serialized Lexical editor state as JSON string
+ * @param sourceType - Whether this is a single or multi source article
  * @param fallbackContent - Fallback content if conversion fails
  * @returns HTML string representation of the rich content
  *
  * @example
- * const html = convertRichContentToHtml(article.richContent, article.content);
+ * const html = convertRichContentToHtml(article.richContent, article.sourceType, article.content);
  */
-function convertRichContentToHtml(richContentJson: string, fallbackContent?: string): string {
+function convertRichContentToHtml(richContentJson: string, sourceType: SourceType, fallbackContent?: string): string {
   try {
     // Create a temporary editor with all necessary nodes
     const editor = createEditor({
@@ -95,7 +103,7 @@ function convertRichContentToHtml(richContentJson: string, fallbackContent?: str
     editor.setEditorState(importedState);
 
     // Now read the HTML from the editor state
-    const html = editor.read(() => {
+    let html = editor.read(() => {
       return $generateHtmlFromNodes(editor, null);
     });
     
@@ -122,6 +130,13 @@ function convertRichContentToHtml(richContentJson: string, fallbackContent?: str
       });
     });
     
+    // For single source articles, strip newlines after paragraph tags
+    if (sourceType === "single") {
+      // Remove newlines that immediately follow closing paragraph tags
+      html = html.replace(/<\/p>\s*\n+/g, '</p>');
+      console.log("✂️ Stripped newlines after <p> tags for single source article");
+    }
+    
     return html;
   } catch (error) {
     console.error("Error converting richContent to HTML:", error);
@@ -133,16 +148,34 @@ function convertRichContentToHtml(richContentJson: string, fallbackContent?: str
  * prepareArticleHtml
  *
  * Prepares article HTML from rich content or plain content with fallback.
+ * For single source articles, strips newlines after paragraph tags.
  *
- * @param article - Article data containing rich content and plain content
+ * @param article - Article data containing rich content, plain content, and source type
  * @returns HTML string ready for export
  */
 function prepareArticleHtml(article: ArticleData): string {
   if (article.richContent) {
-    return convertRichContentToHtml(article.richContent, article.content || undefined);
+    return convertRichContentToHtml(article.richContent, article.sourceType, article.content || undefined);
   } else if (article.content) {
-    // Fallback to plain content with basic HTML formatting
-    return `<div>${article.content.replace(/\n/g, "<br>")}</div>`;
+    // Fallback to plain content - convert to proper paragraph structure
+    let content = article.content;
+    
+    // For single source articles, strip newlines after paragraph tags first
+    if (article.sourceType === "single") {
+      content = content.replace(/<\/p>\s*\n+/g, '</p>');
+    }
+    
+    // If content doesn't have HTML tags, convert double newlines to paragraphs
+    if (!content.includes('<p>') && !content.includes('<div>')) {
+      // Split on double newlines and wrap each section in <p> tags
+      content = content
+        .split(/\n\s*\n/)
+        .filter(para => para.trim())
+        .map(para => `<p>${para.trim()}</p>`)
+        .join('');
+    }
+    
+    return `<div>${content}</div>`;
   }
   return "";
 }
@@ -238,6 +271,7 @@ async function exportArticleAsDocx(article: ArticleData): Promise<void> {
     articleHtml: articleHtml, // Send converted HTML for HTMLtoDOCX
     blobs: article.blob || undefined,
     createdByName: article.createdByName,
+    sourceType: article.sourceType,
   };
 
   const response = await fetch("/api/export-docx", {
@@ -292,6 +326,7 @@ async function exportArticleAsPdf(article: ArticleData): Promise<void> {
     articleHtml: articleHtml,
     blobs: article.blob || undefined,
     createdByName: article.createdByName,
+    sourceType: article.sourceType,
   };
 
   console.log("📤 Sending PDF export request:", pdfData);

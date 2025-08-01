@@ -24,17 +24,9 @@ import { getAuthenticatedUserServer } from "@/lib/supabase/server";
 // Next.js helpers ------------------------------------------------------------
 import { redirect } from "next/navigation";
 
-// Shared UI Components -------------------------------------------------------
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Button } from "@/components/ui/button";
-import { Drawer, DrawerClose, DrawerContent, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
-import { BasicArticleInputs } from "@/components/article-handling/shared/basic";
-import { ArticleActions } from "@/components/article-handling/shared/actions";
-import { SourceInputs } from "@/components/article-handling/shared/source";
-import { PresetsManager } from "@/components/article-handling/shared/presets";
-
 // Unified Context ------------------------------------------------------------
 import { ArticleHandlerProvider, type ArticleHandlerState } from "@/components/article-handling/shared/article-handler-context";
+import AggregatorPageClient from "./client";
 
 /* ==========================================================================*/
 // Utility Functions
@@ -227,68 +219,7 @@ async function Aggregator2Page({ searchParams }: { searchParams: Promise<{ slug?
   /* ------------------------- 4. Render client tree --------------------- */
   return (
     <ArticleHandlerProvider initialMode="multi" initialState={initialState}>
-      <div className="h-[calc(100vh-4rem)] group-has-data-[collapsible=icon]/sidebar-wrapper:h-[calc(100vh-3rem)] transition-[height] ease-linear">
-        
-        {/* Mobile/Tablet Layout (up to lg) - Main content with Drawer for presets */}
-        <div className="lg:hidden h-full">
-          <div className="h-full flex flex-col relative">
-            {/* Main Content */}
-            <div className="flex-1 overflow-y-auto px-6 pt-6 pb-20 space-y-12">
-              <BasicArticleInputs />
-              <SourceInputs />
-              <ArticleActions />
-            </div>
-            
-            {/* Floating Drawer Trigger */}
-            <div className="fixed bottom-6 right-6 z-40">
-              <Drawer>
-                <DrawerTrigger asChild>
-                  <Button size="lg" className="shadow-lg">
-                    Presets
-                  </Button>
-                </DrawerTrigger>
-                <DrawerContent>
-                  <DrawerHeader>
-                    <DrawerTitle>Article Presets</DrawerTitle>
-                  </DrawerHeader>
-                  <div className="px-4 pb-4 max-h-[60vh] overflow-y-auto">
-                    <PresetsManager presets={presets} />
-                  </div>
-                  <DrawerFooter>
-                    <DrawerClose asChild>
-                      <Button variant="outline">Close</Button>
-                    </DrawerClose>
-                  </DrawerFooter>
-                </DrawerContent>
-              </Drawer>
-            </div>
-          </div>
-        </div>
-
-        {/* Desktop Layout (lg+) - Resizable horizontal panels */}
-        <div className="hidden lg:block h-full">
-          <ResizablePanelGroup direction="horizontal" className="h-full">
-            {/* Main Content Panel */}
-            <ResizablePanel defaultSize={79} minSize={60} maxSize={79} className="">
-              <div className="h-full flex flex-col">
-                <div className="flex-1 overflow-y-auto px-6 pt-6 space-y-12">
-                  <BasicArticleInputs />
-                  <SourceInputs />
-                  <ArticleActions />
-                </div>
-              </div>
-            </ResizablePanel>
-            
-            <ResizableHandle />
-            
-            {/* Presets Panel */}
-            <ResizablePanel defaultSize={21} minSize={21} maxSize={40} className="bg-secondary/30">
-              <PresetsManager presets={presets} />
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        </div>
-
-      </div>
+      <AggregatorPageClient presets={presets} />
     </ArticleHandlerProvider>
   );
 }

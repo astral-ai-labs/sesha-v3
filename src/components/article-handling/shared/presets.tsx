@@ -29,7 +29,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from "sonner";
 
 // Icons ---------------------------------------------------------------------
-import { Info, ChevronDown, Check } from "lucide-react";
+import { Info, ChevronDown, Check, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 // Local modules -------------------------------------------------------------
 import { Preset } from "@/db/schema";
@@ -43,13 +43,17 @@ import { cn } from "@/lib/utils";
 
 interface PresetsProps {
   presets: Preset[]; // fetched list from server
+  isCollapsed: boolean;
+  onCollapse: () => void;
+  onExpand: () => void;
+  panelSize: number;
 }
 
 /* ==========================================================================*/
 // Component
 /* ==========================================================================*/
 
-function PresetsManager({ presets = [] }: PresetsProps) {
+function PresetsManager({ presets = [], isCollapsed, onCollapse, onExpand, panelSize }: PresetsProps) {
   /* ------------------------ article handler context bindings ---------------------- */
   const { preset, setPreset, canSavePreset, mode } = useArticleHandler();
 
@@ -65,6 +69,10 @@ function PresetsManager({ presets = [] }: PresetsProps) {
   const [allPresets, setAllPresets] = useState<Preset[]>(presets);
 
   const currentPreset = allPresets.find((p) => p.id === selectedId);
+
+  // Determine if we should use compact layout based on panel size
+  const isCompact = panelSize < 25;
+  const horizontalPadding = isCompact ? "px-2" : "px-4";
 
   /* --------------------------- helper functions ------------------------- */
   
@@ -201,15 +209,57 @@ function PresetsManager({ presets = [] }: PresetsProps) {
 
   const isSaveDisabled = !canSavePreset || (currentPreset && !hasChanges()) || isLoading;
 
+  // Collapsed view - show expand arrow ---
+  if (isCollapsed) {
+    return (
+      <div className="h-full flex flex-col justify-start pt-[21px]">
+        <div className="flex justify-center">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button 
+                onClick={onExpand}
+                className="p-1 rounded-md hover:bg-accent transition-colors"
+              >
+                <ChevronsLeft className="h-4 w-4" strokeWidth={3} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Expand Presets</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+    );
+  }
+
   /* -------------------------------- UI ---------------------------------- */
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4 pl-4 py-4 pr-6 @container">
+      {/* Start of Header Section with Collapse Button --- */}
+      <div className={`flex items-center justify-between ${horizontalPadding} pt-5 pb-4`}>
+        <Label className="text-sm font-medium">Presets</Label>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button 
+              onClick={onCollapse}
+              className="p-1 rounded-md hover:bg-accent transition-colors hidden lg:block"
+            >
+              <ChevronsRight className="h-4 w-4" strokeWidth={3} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            <p>Collapse Panel</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      {/* End of Header Section --- */}
+
+      <div className={`flex-1 overflow-y-auto overflow-x-hidden space-y-4 ${horizontalPadding} py-4 @container`}>
         {/* Preset Combobox */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Label className="text-sm font-medium">Preset</Label>
+            <Label className="text-xs font-medium">Preset</Label>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Info className="h-3 w-3 text-muted-foreground cursor-pointer" />
@@ -300,7 +350,7 @@ function PresetsManager({ presets = [] }: PresetsProps) {
 
         {/* Blobs */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Blobs</Label>
+          <Label className="text-xs font-medium">Blobs</Label>
           <div className="grid grid-cols-2 @max-3xs:grid-cols-1 @lg:grid-cols-3 gap-2">
             {["1", "2", "3", "4", "5", "6"].map((num) => (
               <Button
@@ -318,7 +368,7 @@ function PresetsManager({ presets = [] }: PresetsProps) {
 
         {/* Length */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Length</Label>
+          <Label className="text-xs font-medium">Length</Label>
           <div className="grid grid-cols-2 @max-3xs:grid-cols-1 gap-2">
             {[
               "100-250",

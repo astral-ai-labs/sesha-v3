@@ -117,6 +117,7 @@ function EmailExportDialog() {
         content: currentArticle.content,
         blob: currentArticle.blob,
         createdByName: currentArticle.createdByName,
+        sourceType: currentArticle.sourceType,
       };
 
       console.log("📧 Sending email...");
@@ -313,6 +314,7 @@ function ArticleHeader() {
         content: currentArticle.content,
         blob: currentArticle.blob,
         createdByName: currentArticle.createdByName,
+        sourceType: currentArticle.sourceType,
       };
 
       if (exportType === "docx") {
