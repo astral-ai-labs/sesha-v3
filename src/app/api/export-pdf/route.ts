@@ -39,7 +39,7 @@ function formatBlobsAsHtml(blobText: string): string {
   if (blobItems.length === 0) return "";
 
   // Return only the UL - let CSS handle the hanging indent on li elements
-  return `<ul style="font-family: Times New Roman; font-size: 12pt; margin: 0;">
+  return `<ul style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; margin: 0;">
   ${blobItems.map((blob) => `<li><strong>${blob}</strong></li>`).join("")}
   </ul>`;
 }
@@ -71,6 +71,13 @@ function generatePdfHtml(data: ExportPdfRequest, articleHtml: string): string {
         @page {
           size: A4;
           margin: 62pt 72pt 62pt 72pt;
+          @bottom-left {
+            content: counter(page);
+            font-family: "Times New Roman", Times, serif;
+            font-size: 14px;
+            color: #000;
+            margin-bottom: 10px;
+          }
         }
         
         body { 
@@ -167,7 +174,7 @@ function generatePdfHtml(data: ExportPdfRequest, articleHtml: string): string {
       </style>
     </head>
     <body>
-      <p style="font-family: Times New Roman, serif; font-size: 11pt; margin-bottom: 0pt;"><u><strong>Slug:</strong> ${data.articleSlug} <strong>Version:</strong> ${data.versionDecimal} <strong>Export by:</strong> sesha systems <strong>on:</strong> ${currentDate}</u></p>
+      <p style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; margin-bottom: 0pt;"><u><strong>Slug:</strong> ${data.articleSlug} <strong>Version:</strong> ${data.versionDecimal} <strong>Export by:</strong> sesha systems <strong>on:</strong> ${currentDate}</u></p>
       
       <h1 class="title">${data.articleHeadline}</h1>
       
