@@ -46,6 +46,21 @@ ${blobItems.map((blob) => `<li style="margin: 8px 0; padding-left: 2px;"><strong
 </div>`;
 }
 
+/**
+ * addParagraphSpacing
+ *
+ * Adds appropriate spacing after major sections for PDF layout
+ */
+function addParagraphSpacing(htmlContent: string): string {
+  if (!htmlContent) return htmlContent;
+  
+  // For PDF, we rely on CSS margins instead of <br/> tags for cleaner spacing
+  // Only add breaks after major sections, not every paragraph
+  return htmlContent
+    .replace(/<\/ul>/g, '</ul><br/>')
+    .replace(/<\/ol>/g, '</ol><br/>')
+    .replace(/<\/blockquote>/g, '</blockquote><br/>');
+}
 
 
 /**
@@ -217,12 +232,16 @@ export async function POST(request: NextRequest) {
     console.log("✅ Validation passed");
 
     // Use the pre-converted HTML from client
-    const articleHtml = body.articleHtml || "";
+    const articleHtml = body.articleHtml || '';
     console.log("📄 Article HTML length:", articleHtml.length);
+
+    // Add spacing between paragraphs
+    const spacedArticleHtml = addParagraphSpacing(articleHtml);
+    console.log("📄 Added paragraph spacing, new length:", spacedArticleHtml.length);
 
     // Generate formatted HTML for PDF
     console.log("📄 Generating HTML content for PDF...");
-    const htmlContent = generatePdfHtml(body, articleHtml);
+    const htmlContent = generatePdfHtml(body, spacedArticleHtml);
     console.log("📄 Generated HTML content length:", htmlContent.length);
 
     // Configure browser for environment
