@@ -38,10 +38,12 @@ function formatBlobsAsHtml(blobText: string): string {
 
   if (blobItems.length === 0) return "";
 
-  // Return only the UL - let CSS handle the hanging indent on li elements
-  return `<ul style="font-family: 'Times New Roman', Times, 'Liberation Serif', 'DejaVu Serif', Georgia, 'Times Roman', serif; font-size: 12pt; margin: 0;">
-  ${blobItems.map((blob) => `<li><strong>${blob}</strong></li>`).join("")}
-  </ul>`;
+  // Return formatted blobs with reduced spacing
+  return `<div style="margin-top: 0px; margin-bottom: 12px;">
+<ul style="font-family: 'Times New Roman', Times, serif; font-size: 16px; margin: 8px 0; padding-left: 20px; list-style-position: outside;">
+${blobItems.map((blob) => `<li style="margin: 8px 0; padding-left: 2px;"><strong>${blob}</strong></li>`).join("")}
+</ul>
+</div>`;
 }
 
 
@@ -70,10 +72,10 @@ function generatePdfHtml(data: ExportPdfRequest, articleHtml: string): string {
       <style>
         @page {
           size: A4;
-          margin: 62pt 72pt 62pt 72pt;
+          margin: 96px 120px 96px 120px;
           @bottom-left {
             content: counter(page);
-            font-family: "Times New Roman", Times, "Liberation Serif", "DejaVu Serif", Georgia, "Times Roman", serif;
+            font-family: "Times New Roman", Times, serif;
             font-size: 14px;
             color: #000;
             margin-bottom: 10px;
@@ -81,48 +83,43 @@ function generatePdfHtml(data: ExportPdfRequest, articleHtml: string): string {
         }
         
         body { 
-          font-family: "Times New Roman", Times, "Liberation Serif", "DejaVu Serif", Georgia, "Times Roman", serif; 
+          font-family: "Times New Roman", Times, serif; 
           line-height: 1.2; 
           margin: 0;
           color: black;
-          font-size: 12pt;
+          font-size: 14px;
         }
           
         
-
-        
         .title {
-          font-size: 18pt;
+          font-size: 24px;
           font-weight: bold;
           text-align: center;
-          /* Increase space above title, decrease space below title */
-          margin: 24pt 0;
+          margin: 32px 0;
           page-break-after: avoid;
         }
 
         .content {
-          margin-top: 18pt;
+          margin-top: 24px;
         }
         
         .content p {
-          margin: 8pt 0;
+          margin: 11px 0;
         }
         
         .content div {
-          margin-bottom: 6pt;
+          margin-bottom: 11px;
         }
         
         ul {
-          /* Add horizontal margins to make blobs tighter/more indented */
-          margin: 6pt 0;
-          padding-left: 20pt;
-          list-style-position: outside;
+          margin: 8px 0;
+          padding-left: 0px;
+          list-style-position: inside;
         }
 
-        /* Standard CSS for list items with hanging indent */
         li {
-          margin: 6pt 0;
-          padding-left: 2pt;
+          margin: 4px 0;
+          padding-left: 2px;
         }
 
         strong, b { font-weight: bold; }
@@ -136,12 +133,12 @@ function generatePdfHtml(data: ExportPdfRequest, articleHtml: string): string {
           page-break-inside: avoid;
         }
         
-        h1 { font-size: 16px; }
-        h2 { font-size: 15px; }
-        h3 { font-size: 14px; }
-        h4 { font-size: 13px; }
-        h5 { font-size: 12px; }
-        h6 { font-size: 11px; }
+        h1 { font-size: 21px; }
+        h2 { font-size: 20px; }
+        h3 { font-size: 19px; }
+        h4 { font-size: 18px; }
+        h5 { font-size: 17px; }
+        h6 { font-size: 16px; }
         
         blockquote {
           border-left: 3px solid #ccc;
@@ -175,7 +172,7 @@ function generatePdfHtml(data: ExportPdfRequest, articleHtml: string): string {
       </style>
     </head>
     <body>
-      <p style="font-family: 'Times New Roman', Times, 'Liberation Serif', 'DejaVu Serif', Georgia, 'Times Roman', serif; font-size: 11pt; margin-bottom: 0pt;"><u><strong>Slug:</strong> ${data.articleSlug} <strong>Version:</strong> ${data.versionDecimal} <strong>Export by:</strong> sesha systems <strong>on:</strong> ${currentDate}</u></p>
+      <p style="font-family: 'Times New Roman', Times, serif; font-size: 14px; margin-bottom: 0px;"><u><strong>Slug:</strong> ${data.articleSlug} <strong>Version:</strong> ${data.versionDecimal} <strong>Export by:</strong> sesha systems <strong>on:</strong> ${currentDate}</u></p>
       
       <h1 class="title">${data.articleHeadline}</h1>
       
@@ -267,12 +264,6 @@ export async function POST(request: NextRequest) {
     // Generate PDF with proper options
     const pdfBuffer = await page.pdf({
       format: "A4",
-      margin: {
-        top: "20px",
-        bottom: "30px",
-        left: "20px",
-        right: "20px",
-      },
       printBackground: true,
       preferCSSPageSize: true,
     });
