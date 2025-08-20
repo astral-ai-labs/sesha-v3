@@ -26,7 +26,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 // Configuration
 /* ==========================================================================*/
 
-const MODEL = anthropic("claude-3-5-sonnet-20240620");
+const MODEL = anthropic("claude-sonnet-4-20250514");
 const TEMPERATURE = 0.8;
 const MAX_TOKENS = 4000;
 

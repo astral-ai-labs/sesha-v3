@@ -71,11 +71,11 @@ if (!baseUrl) {
  */
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   // Claude 3.5/3.7 Sonnet
-  "claude-3-5-sonnet-20240620": { input: 3, output: 15 },
+  "claude-sonnet-4-20250514": { input: 3, output: 15 },
   "claude-3-5-sonnet": { input: 3, output: 15 },
   "claude-3-7-sonnet": { input: 3, output: 15 },
   // Claude 4 Sonnet
-  "claude-4-sonnet": { input: 3, output: 15 },
+  "claude-sonnet-4-20250514": { input: 3, output: 15 },
   // Claude 4 Opus
   "claude-4-opus": { input: 15, output: 75 },
   // Claude 3 Opus
