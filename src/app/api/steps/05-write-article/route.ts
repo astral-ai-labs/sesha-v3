@@ -28,7 +28,7 @@ import type { LengthRange } from "@/db/schema";
 /* ==========================================================================*/
 
 // const model = openai("gpt-4o");
-const model = anthropic("claude-3-5-sonnet-20240620");
+const model = anthropic("claude-3-7-sonnet-20250219");
 
 // Word target mapping
 const WORD_TARGET_MAP: Record<LengthRange, number> = {

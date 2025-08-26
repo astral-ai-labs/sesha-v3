@@ -26,7 +26,7 @@ import { Step07SentencePerLineAttributionAIResponse, Step07SentencePerLineAttrib
 // Configuration
 /* ==========================================================================*/
 
-const model = anthropic("claude-3-5-sonnet-20240620");
+const model = anthropic("claude-3-7-sonnet-20250219");
 
 /* ==========================================================================*/
 // Schema

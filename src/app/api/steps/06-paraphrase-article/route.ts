@@ -28,7 +28,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 
 // const model = openai("gpt-4o-mini");
 // const model = anthropic("claude-4-sonnet-20250514");
-const model = anthropic("claude-3-5-sonnet-20240620");
+const model = anthropic("claude-3-7-sonnet-20250219");
 
 /* ==========================================================================*/
 // Prompts

@@ -29,7 +29,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 /* ==========================================================================*/
 
 const structuredModel = openai("gpt-4o");
-const MODEL = anthropic("claude-3-5-sonnet-20240620");
+const MODEL = anthropic("claude-3-7-sonnet-20250219");
 const TEMPERATURE = 0.4;
 const TEMPERATURE_STRUCTURED = 0.1;
 const MAX_TOKENS = 500;

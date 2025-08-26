@@ -71,7 +71,7 @@ if (!baseUrl) {
  */
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   // Claude 3.5/3.7 Sonnet
-  "claude-3-5-sonnet-20240620": { input: 3, output: 15 },
+  "claude-3-7-sonnet-20250219": { input: 3, output: 15 },
   "claude-3-5-sonnet": { input: 3, output: 15 },
   "claude-3-7-sonnet": { input: 3, output: 15 },
   // Claude 4 Sonnet
