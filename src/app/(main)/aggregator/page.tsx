@@ -140,8 +140,8 @@ function buildInitialStateFromInputs(inputs: Article, orgId: number = 1, current
   return {
     basic: {
       slug: inputs.slug,
-      headline: "",
-    },
+      headline: inputs.headline ?? "",
+    },  
     sources,
     preset: {
       title: inputs.inputPresetTitle ?? "",

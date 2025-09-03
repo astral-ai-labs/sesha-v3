@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 // AI SDK Core ---
 import { generateText } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { openai } from "@ai-sdk/openai";  
 
 // Local modules ---
 import { scrapeUrl } from "@/lib/firecrawl2";
@@ -23,7 +23,7 @@ import type { ScrapeOptions } from "@/lib/firecrawl2";
 // Configuration
 /* ==========================================================================*/
 
-const MODEL = openai("gpt-4o");
+const MODEL = openai("gpt-4o-mini");
 const TEMPERATURE = 0.1;
 const MAX_TOKENS = 4000;
 

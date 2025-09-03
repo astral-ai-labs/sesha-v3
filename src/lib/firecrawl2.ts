@@ -162,7 +162,7 @@ async function scrapeUrl(
     formats = ["markdown"],
     onlyMainContent = true,
     excludeTags = EXCLUDE_TAGS as unknown as string[],
-    waitFor = DEFAULT_WAIT_FOR,
+    // waitFor = DEFAULT_WAIT_FOR,
     timeout = DEFAULT_TIMEOUT,
     ...rest
   } = options;
@@ -172,7 +172,7 @@ async function scrapeUrl(
     formats,
     onlyMainContent,
     excludeTags,
-    waitFor,
+    // waitFor,
     timeout,
     ...rest,
   });
