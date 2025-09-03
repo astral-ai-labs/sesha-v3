@@ -25,7 +25,7 @@ if (!API_KEY) {
 }
 
 const DEFAULT_TIMEOUT = 40000; // ms
-const DEFAULT_WAIT_FOR = 2000; // ms
+// const DEFAULT_WAIT_FOR = 2000; // ms
 
 const EXCLUDE_TAGS: readonly string[] = [
   "google-analytics",
