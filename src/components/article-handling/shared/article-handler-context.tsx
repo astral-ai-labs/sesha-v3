@@ -44,6 +44,7 @@ interface SourceInput {
 interface BasicForm {
   slug: string;
   headline: string;
+  headlineSource?: 'ai' | 'manual';
 }
 
 interface ArticleMetadata {
@@ -62,7 +63,7 @@ interface ArticleHandlerState {
 /* ------------------------- Reducer Action shape ------------------------- */
 
 type ArticleHandlerAction = 
-  | { type: "SET_BASIC"; field: keyof BasicForm; value: string } 
+  | { type: "SET_BASIC"; field: keyof BasicForm; value: string | 'ai' | 'manual' } 
   | { type: "SET_PRESET"; field: keyof PresetForm; value: string | BlobsCount | LengthRange } 
   | { type: "SET_SOURCE_URL"; sourceIndex: number; value: string } 
   | { type: "SET_SOURCE_USAGE"; sourceIndex: number; field: keyof SourceUsageOptions; value: string | boolean }
@@ -76,7 +77,7 @@ type ArticleHandlerAction =
 /* ----------------------------- Hook output ----------------------------- */
 
 interface ArticleHandlerDispatch {
-  setBasic: (field: keyof BasicForm, value: string) => void;
+  setBasic: (field: keyof BasicForm, value: string | 'ai' | 'manual') => void;
   setPreset: (field: keyof PresetForm, value: string | BlobsCount | LengthRange) => void;
   setSourceUrl: (sourceIndex: number, value: string) => void;
   setSourceUsage: (sourceIndex: number, field: keyof SourceUsageOptions, value: string | boolean) => void;
@@ -142,7 +143,7 @@ const DEFAULT_SOURCE_INPUT: SourceInput = {
   usage: DEFAULT_SOURCE_USAGE,
 };
 
-const DEFAULT_BASIC: BasicForm = { slug: "", headline: "" };
+const DEFAULT_BASIC: BasicForm = { slug: "", headline: "", headlineSource: 'ai' };
 
 const DEFAULT_METADATA: ArticleMetadata = {
   orgId: 1, // Default org ID

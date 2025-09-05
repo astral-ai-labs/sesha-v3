@@ -43,6 +43,7 @@ export interface ArticleVersionMetadata {
   versionDecimal: string; // new decimal version (3.00, 3.01, etc.)
   slug: string | null;
   headline: string | null;
+  headlineSource?: 'ai' | 'manual';
   createdAt: Date;
   blobOutline: string | null;
 }
@@ -441,6 +442,7 @@ export async function createAiArticleRecord(payload: {
   sourceType: "single" | "multi";
   slug: string;
   headline: string;
+  headlineSource?: 'ai' | 'manual';
   sources: Array<{
     description: string;
     accredit: string;
@@ -548,7 +550,10 @@ export async function createAiArticleRecord(payload: {
         // Input snapshot fields - all sources
         ...sourceData,
 
-        inputPresetInstructions: payload.instructions.instructions,
+        inputPresetInstructions: JSON.stringify({
+          originalInstructions: payload.instructions.instructions,
+          headlineSource: payload.headlineSource || 'ai'
+        }),
         inputPresetBlobs: payload.instructions.blobs,
         inputPresetLength: payload.instructions.length,
 
@@ -605,7 +610,8 @@ export async function updateArticleWithResults(articleId: string, userId: string
 export async function createHumanEditedVersion(
   baseArticle: Article,
   userId: string,
-  updates: Partial<Pick<Article, "headline" | "blob" | "content" | "richContent" | "status">>
+  updates: Partial<Pick<Article, "headline" | "blob" | "content" | "richContent" | "status">>,
+  headlineSource?: 'ai' | 'manual'
 ): Promise<Article> {
   return await db.transaction(async (tx) => {
     // Get the major version from the base article
@@ -698,7 +704,64 @@ export async function createHumanEditedVersion(
 
         // Copy preset data
         inputPresetTitle: baseArticle.inputPresetTitle,
-        inputPresetInstructions: baseArticle.inputPresetInstructions,
+        inputPresetInstructions: (() => {
+          // Check if headline is being updated OR if we need to update headlineSource
+          console.log("🔍 Checking headline update:", {
+            hasHeadlineUpdate: updates.headline !== undefined,
+            headlineUpdate: updates.headline,
+            baseHeadline: baseArticle.headline,
+            headlinesEqual: updates.headline === baseArticle.headline,
+            headlineChanged: updates.headline !== undefined && updates.headline !== baseArticle.headline
+          });
+          
+          // Parse current instructions to check headlineSource
+          let currentHeadlineSource = 'ai';
+          try {
+            const parsed = JSON.parse(baseArticle.inputPresetInstructions);
+            currentHeadlineSource = parsed.headlineSource || 'ai';
+          } catch (error) {
+            console.log("❌ Failed to parse current instructions:", error);
+          }
+          
+          // Update headlineSource to 'manual' if:
+          // 1. Headline is being updated AND it's different, OR
+          // 2. Headline is being updated AND current headlineSource is 'ai' (force update), OR
+          // 3. A specific headlineSource was passed and it's 'manual'
+          const shouldUpdateHeadlineSource = updates.headline !== undefined && (
+            updates.headline !== baseArticle.headline || 
+            currentHeadlineSource === 'ai' ||
+            headlineSource === 'manual'
+          );
+          
+          if (shouldUpdateHeadlineSource) {
+            console.log("🔄 Updating headlineSource to 'manual' for headline update:", {
+              oldHeadline: baseArticle.headline,
+              newHeadline: updates.headline,
+              currentHeadlineSource,
+              originalInstructions: baseArticle.inputPresetInstructions
+            });
+            try {
+              const parsed = JSON.parse(baseArticle.inputPresetInstructions);
+              const newInstructions = JSON.stringify({
+                ...parsed,
+                headlineSource: 'manual'
+              });
+              console.log("✅ Updated instructions with manual headlineSource:", newInstructions);
+              return newInstructions;
+            } catch (error) {
+              console.log("❌ Failed to parse original instructions, creating new structure:", error);
+              // If parsing fails, create new structure
+              const newInstructions = JSON.stringify({
+                originalInstructions: baseArticle.inputPresetInstructions,
+                headlineSource: 'manual'
+              });
+              console.log("✅ Created new instructions structure:", newInstructions);
+              return newInstructions;
+            }
+          }
+          console.log("ℹ️ No headline source update needed, keeping original instructions");
+          return baseArticle.inputPresetInstructions;
+        })(),
         inputPresetBlobs: baseArticle.inputPresetBlobs,
         inputPresetLength: baseArticle.inputPresetLength,
 

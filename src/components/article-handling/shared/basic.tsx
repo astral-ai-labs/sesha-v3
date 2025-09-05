@@ -44,6 +44,18 @@ function BasicArticleInputs() {
 
   const handleInstructionsExpandToggle = () => setInstructionsExpanded((p) => !p);
 
+  const handleHeadlineChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newHeadline = e.target.value;
+    setBasic("headline", newHeadline);
+    
+    // Mark as manual when user types
+    if (newHeadline.trim()) {
+      setBasic("headlineSource", "manual");
+    } else {
+      setBasic("headlineSource", "ai");
+    }
+  };
+
   const handleSubmit = async () => {
 
     // Debug logging to see what mode is being used
@@ -54,6 +66,7 @@ function BasicArticleInputs() {
     const requestData = {
       slug: basic.slug,
       headline: basic.headline,
+      headlineSource: basic.headlineSource || 'ai',
       sources: sources.map((source) => ({
         description: source.usage.description,
         accredit: source.usage.accredit,
@@ -141,7 +154,7 @@ function BasicArticleInputs() {
             </TooltipContent>
           </Tooltip>
         </div>
-        <Input id="headline-input" value={basic.headline} onChange={(e) => setBasic("headline", e.target.value)} placeholder="Add a headline..." className="w-full" />
+        <Input id="headline-input" value={basic.headline} onChange={handleHeadlineChange} placeholder="Add a headline..." className="w-full" />
       </div>
 
       {/* Editor Instructions --- */}

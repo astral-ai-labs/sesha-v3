@@ -55,8 +55,11 @@ function ArticleOutline() {
     const newHeadline = e.target.value;
     setManualHeadline(newHeadline);
     
-    // Update the context to track changes
-    updateCurrentArticle({ headline: newHeadline });
+    // Update the context to track changes and mark as manual
+    updateCurrentArticle({ 
+      headline: newHeadline,
+      headlineSource: 'manual' // Mark as manual when user edits
+    });
   };
 
   const handleBlobChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

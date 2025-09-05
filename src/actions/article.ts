@@ -164,7 +164,7 @@ export async function createNewAiVersionAction(currentArticle: Article, updates:
  * @param updates - Updated fields for the new version
  * @returns Success/error result with new article data
  */
-export async function createHumanEditedVersionAction(currentArticle: Article, updates: Partial<Article>): Promise<CreateNewVersionResult> {
+export async function createHumanEditedVersionAction(currentArticle: Article, updates: Partial<Article>, headlineSource?: 'ai' | 'manual'): Promise<CreateNewVersionResult> {
   // console.log("🚀 createHumanEditedVersionAction called with:", {
   //   articleId: currentArticle.id,
   //   slug: currentArticle.slug,
@@ -200,7 +200,7 @@ export async function createHumanEditedVersionAction(currentArticle: Article, up
     // });
 
     // Create the new human-edited version
-    const newArticle = await createHumanEditedVersion(currentArticle, user.id, fieldsToUpdate);
+    const newArticle = await createHumanEditedVersion(currentArticle, user.id, fieldsToUpdate, headlineSource);
 
     console.log("✅ New human-edited version created with ID:", newArticle.id, "and decimal version:", newArticle.versionDecimal);
 

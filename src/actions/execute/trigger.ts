@@ -112,6 +112,7 @@ export async function createArticleFromRequest(request: DigestRequest | Aggregat
       },
       slug: cleanedSlug,
       headline: request.headline,
+      headlineSource: request.headlineSource || 'ai',
       sources: sources,
       instructions: request.instructions,
       sourceType: sourceType,

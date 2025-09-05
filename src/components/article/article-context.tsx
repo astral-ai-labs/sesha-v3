@@ -20,7 +20,10 @@ import { ArticleVersionMetadata } from "@/db/dal";
 /* ==========================================================================*/
 
 // Extended article type with user information
-type ArticleWithCreator = Article & { createdByName: string };
+type ArticleWithCreator = Article & { 
+  createdByName: string;
+  headlineSource?: 'ai' | 'manual';
+};
 
 interface ArticleContextValue {
   // All article versions (full data with creator info)
@@ -38,6 +41,7 @@ interface ArticleContextValue {
   // Computed values
   slug: string;
   headline: string;
+  headlineSource: 'ai' | 'manual';
   lastModified: Date | null;
   createdByName: string;
   blobOutline: string;
@@ -156,6 +160,7 @@ function ArticleProvider({ children, articles, initialVersionDecimal }: ArticleP
     versionDecimal: article.versionDecimal,
     slug: article.slug,
     headline: article.headline,
+    headlineSource: article.headlineSource || 'ai',
     createdAt: article.createdAt,
     blobOutline: article.blob,
   }));
@@ -171,15 +176,23 @@ function ArticleProvider({ children, articles, initialVersionDecimal }: ArticleP
     });
     if (currentArticle) {
       const newArticle = { ...currentArticle, ...updates };
+      
+      // If headline is being updated, mark it as manual
+      if (updates.headline !== undefined && updates.headline !== currentArticle.headline) {
+        newArticle.headlineSource = 'manual';
+      }
+      
       console.log("📝 Setting new article:", {
         old: { 
           headline: currentArticle.headline, 
+          headlineSource: currentArticle.headlineSource,
           blob: currentArticle.blob,
           contentLength: currentArticle.content?.length,
           richContentLength: currentArticle.richContent?.length 
         },
         new: { 
           headline: newArticle.headline, 
+          headlineSource: newArticle.headlineSource,
           blob: newArticle.blob,
           contentLength: newArticle.content?.length,
           richContentLength: newArticle.richContent?.length
@@ -197,17 +210,19 @@ function ArticleProvider({ children, articles, initialVersionDecimal }: ArticleP
   // Computed values
   const slug = currentArticle?.slug || '';
   const headline = currentArticle?.headline || '';
+  const headlineSource = currentArticle?.headlineSource || 'ai';
   const lastModified = currentArticle?.updatedAt || null;
   const createdByName = currentArticle?.createdByName || 'Unknown';
   
   // Format blob outline as bullet list
   const blobOutline = currentArticle?.blob 
-    ? currentArticle.blob.split('\n').map(blob => `• ${blob}`).join('\n\n')
+    ? currentArticle.blob.split('\n').map((blob: string) => `• ${blob}`).join('\n\n')
     : '';
   
   // Check if there are changes from the original
   const hasChanges = originalArticle && currentArticle ? (
     originalArticle.headline !== currentArticle.headline ||
+    originalArticle.headlineSource !== currentArticle.headlineSource ||
     originalArticle.blob !== currentArticle.blob ||
     originalArticle.content !== currentArticle.content ||
     originalArticle.richContent !== currentArticle.richContent ||
@@ -248,6 +263,7 @@ function ArticleProvider({ children, articles, initialVersionDecimal }: ArticleP
     updateCurrentArticle,
     slug,
     headline,
+    headlineSource,
     lastModified,
     createdByName,
     blobOutline,

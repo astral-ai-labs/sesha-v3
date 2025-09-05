@@ -29,6 +29,7 @@ export interface DigestRequest {
   metadata: DigestRequestMetadata;
   slug: string;
   headline: string;
+  headlineSource?: 'ai' | 'manual';
   source: {
     description: string;
     accredit: string;
@@ -129,6 +130,7 @@ export interface Step02SummarizeFactsResponse extends BaseStepResponse {
 export interface Step03WriteHeadlineAndBlobsRequest {
   blobs: number;
   headline?: string;
+  headlineSource?: 'ai' | 'manual';
   instructions: string;
   // Source content - needed for generating headlines and blobs
   sourceAccredit?: string;
@@ -142,6 +144,7 @@ export interface Step03WriteHeadlineAndBlobsRequest {
 export interface Step03WriteHeadlineAndBlobsAIResponse {
   headline: string;
   blobs: string[];
+  headlineSource?: 'ai' | 'manual';
   usage: {
     inputTokens: number;
     outputTokens: number;

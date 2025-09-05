@@ -145,7 +145,7 @@ function ArticleContent() {
           updateData
         });
         
-        const result = await createHumanEditedVersionAction(currentArticle, updateData);
+        const result = await createHumanEditedVersionAction(currentArticle, updateData, currentArticle.headlineSource);
 
         console.log("📥 Server action result:", result);
 

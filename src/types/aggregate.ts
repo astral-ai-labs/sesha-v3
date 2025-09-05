@@ -29,6 +29,7 @@ export interface AggregateRequest {
   metadata: AggregateRequestMetadata;
   slug: string;
   headline: string;
+  headlineSource?: 'ai' | 'manual';
   sources: Source[];
   instructions: {
     instructions: string;
@@ -150,6 +151,7 @@ export interface FactsBitSplitting2Response extends BaseStepResponse {
 export interface Step03HeadlinesBlobsRequest {
   noOfBlobs: number;
   headlineSuggestion?: string;
+  headlineSource?: 'ai' | 'manual';
   instructions: string;
   sources: Source[]; // Sources with factsBitSplitting and factsBitSplitting2 populated
 }
@@ -158,6 +160,7 @@ export interface Step03HeadlinesBlobsRequest {
 export interface Step03HeadlinesBlobsAIResponse {
   headline: string;
   blobs: string[];
+  headlineSource?: 'ai' | 'manual';
   usage: {
     inputTokens: number;
     outputTokens: number;

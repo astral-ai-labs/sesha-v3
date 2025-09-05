@@ -32,6 +32,7 @@ import type { BlobsCount, LengthRange } from "@/db/schema";
 interface PipelineSubmissionParams {
   slug: string;
   headline?: string;
+  headlineSource?: 'ai' | 'manual';
   sources: {
     description: string;
     accredit: string;
@@ -86,6 +87,7 @@ async function buildPipelineRequest(params: PipelineSubmissionParams, sourceType
     },
     slug: params.slug,
     headline: params.headline || "",
+    headlineSource: params.headlineSource || 'ai',
     instructions: {
       instructions: params.instructions.instructions,
       blobs: params.preset.blobs as BlobsCount,

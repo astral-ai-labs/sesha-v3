@@ -232,6 +232,7 @@ export async function POST(request: NextRequest) {
     const response: Step03WriteHeadlineAndBlobsAIResponse = {
       headline: body.headline ? body.headline : structuredHeadlineAndBlobs.headline,
       blobs: structuredHeadlineAndBlobs.blobs,
+      headlineSource: body.headlineSource || 'ai',
       usage: [
         {
           inputTokens: anthropicUsage?.promptTokens ?? 0,

@@ -145,15 +145,40 @@ function buildInitialStateFromInputs(inputs: Article, orgId: number = 1, current
     });
   }
 
+  let headlineSource = 'ai';
+  let originalInstructions = inputs.inputPresetInstructions;
+  
+  // Try to parse headlineSource from instructions metadata
+  try {
+    const parsed = JSON.parse(inputs.inputPresetInstructions);
+    console.log("🔍 Parsed instructions:", parsed);
+    if (parsed.headlineSource) {
+      headlineSource = parsed.headlineSource;
+      originalInstructions = parsed.originalInstructions;
+    }
+  } catch (error) {
+    console.log("❌ Failed to parse instructions:", error);
+    // If parsing fails, use original instructions and default to 'ai'
+  }
+  
+  console.log("📊 buildInitialStateFromInputs result:", {
+    headline: inputs.headline,
+    headlineSource,
+    shouldShowHeadline: headlineSource === 'manual',
+    instructions: inputs.inputPresetInstructions
+  });
+
   return {
     basic: {
       slug: inputs.slug,
-      headline: inputs.headline ?? "",
+      // Only populate headline if it was manually set
+      headline: headlineSource === 'manual' ? (inputs.headline ?? "") : "",
+      headlineSource: headlineSource,
     },
     sources,
     preset: {
       title: inputs.inputPresetTitle ?? "",
-      instructions: inputs.inputPresetInstructions,
+      instructions: originalInstructions, // Use parsed instructions
       blobs: inputs.inputPresetBlobs,
       length: inputs.inputPresetLength,
     },

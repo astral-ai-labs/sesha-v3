@@ -234,6 +234,7 @@ export async function POST(request: NextRequest) {
     const response: Step03HeadlinesBlobsAIResponse = {
       headline: outputHeadline,
       blobs: structuredHeadlineAndBlobs.blobs,
+      headlineSource: body.headlineSource || 'ai',
       usage: [
         {
           inputTokens: anthropicUsage?.promptTokens ?? 0,
