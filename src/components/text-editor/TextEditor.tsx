@@ -32,6 +32,9 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 
 // Local Modules ---
 import { ContentEditable } from "@/components/editor/editor-ui/content-editable";
+import RipHighlightPlugin from "@/components/editor/plugins/rip-highlight-plugin";
+import RipDetectionTogglePlugin from "@/components/editor/plugins/toolbar/rip-detection-toggle-plugin";
+import RipTooltipManager from "@/components/article/rip-tooltip";
 import { FloatingTextFormatToolbarPlugin } from "@/components/editor/plugins/floating-text-format-plugin";
 import { FontFormatToolbarPlugin } from "@/components/editor/plugins/toolbar/font-format-toolbar-plugin";
 import { FontColorToolbarPlugin } from "@/components/editor/plugins/toolbar/font-color-toolbar-plugin";
@@ -49,6 +52,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 
+// Types ---
+import type { QuoteComparison } from "@/types/aggregate";
+
 // Icons ---
 import { Maximize2, Minimize2 } from "lucide-react";
 
@@ -62,6 +68,8 @@ interface TextEditorProps {
   onChange?: (content: string) => void;
   onRichTextChange?: (editorState: SerializedEditorState) => void;
   placeholder?: string;
+  ripComparisons?: QuoteComparison[];
+  sourceNames?: Record<number, string>;
 }
 
 /* ==========================================================================*/
@@ -139,7 +147,19 @@ function ContentUpdatePlugin({ content }: { content?: string }) {
  *
  * Component that renders the fixed toolbar with all formatting options
  */
-function ToolbarPlugins({ expanded, onExpandToggle }: { expanded: boolean; onExpandToggle: () => void }) {
+function ToolbarPlugins({ 
+  expanded, 
+  onExpandToggle,
+  ripDetectionEnabled,
+  onRipDetectionToggle,
+  hasRipData
+}: { 
+  expanded: boolean; 
+  onExpandToggle: () => void;
+  ripDetectionEnabled: boolean;
+  onRipDetectionToggle: (enabled: boolean) => void;
+  hasRipData: boolean;
+}) {
   return (
     <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b bg-background p-2">
       {/* Block Format */}
@@ -173,6 +193,13 @@ function ToolbarPlugins({ expanded, onExpandToggle }: { expanded: boolean; onExp
       
       <Separator orientation="vertical" className="mx-2 h-6" />
       
+      {/* Rip Detection Toggle */}
+      <RipDetectionTogglePlugin
+        isEnabled={ripDetectionEnabled}
+        onToggle={onRipDetectionToggle}
+        hasRipData={hasRipData}
+      />
+      
       {/* Expand/Minimize Button */}
       <div className="flex items-center gap-1 ml-auto">
         <Button
@@ -199,7 +226,9 @@ function EditorPlugins({
   placeholder, 
   expanded, 
   onExpandToggle,
-  content
+  content,
+  ripComparisons,
+  sourceNames
 }: { 
   onChange?: (content: string) => void; 
   onRichTextChange?: (editorState: SerializedEditorState) => void;
@@ -207,8 +236,21 @@ function EditorPlugins({
   expanded: boolean;
   onExpandToggle: () => void;
   content?: string;
+  ripComparisons?: QuoteComparison[];
+  sourceNames?: Record<number, string>;
 }) {
   const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null);
+  const [ripDetectionEnabled, setRipDetectionEnabled] = useState(true);
+
+  // Use provided source names or fallback to generic names
+  const finalSourceNames: Record<number, string> = sourceNames || {
+    1: "Source 1",
+    2: "Source 2", 
+    3: "Source 3",
+    4: "Source 4",
+    5: "Source 5",
+    6: "Source 6"
+  };
 
   const onRef = (_floatingAnchorElem: HTMLDivElement) => {
     if (_floatingAnchorElem !== null) {
@@ -219,7 +261,13 @@ function EditorPlugins({
   return (
     <div className="relative">
       {/* Fixed Toolbar */}
-      <ToolbarPlugins expanded={expanded} onExpandToggle={onExpandToggle} />
+      <ToolbarPlugins 
+        expanded={expanded} 
+        onExpandToggle={onExpandToggle}
+        ripDetectionEnabled={ripDetectionEnabled}
+        onRipDetectionToggle={setRipDetectionEnabled}
+        hasRipData={Boolean(ripComparisons && ripComparisons.length > 0)}
+      />
 
       {/* Editor Content */}
       <div className={`relative transition-all duration-200 ${
@@ -273,7 +321,22 @@ function EditorPlugins({
           <FloatingTextFormatToolbarPlugin anchorElem={floatingAnchorElem} />
         )}
         <ContentUpdatePlugin content={content} />
+        
+        {/* Rip Detection Plugins */}
+        {ripComparisons && ripComparisons.length > 0 && (
+          <RipHighlightPlugin
+            ripComparisons={ripComparisons}
+            isEnabled={ripDetectionEnabled}
+            sourceNames={finalSourceNames}
+          />
+        )}
       </div>
+      
+      {/* Rip Tooltip Manager */}
+      <RipTooltipManager 
+        isEnabled={ripDetectionEnabled && Boolean(ripComparisons && ripComparisons.length > 0)}
+        ripComparisons={ripComparisons || []}
+      />
     </div>
   );
 }
@@ -289,7 +352,9 @@ function TextEditorInner({
   placeholder, 
   expanded, 
   onExpandToggle,
-  content 
+  content,
+  ripComparisons,
+  sourceNames
 }: { 
   onChange?: (content: string) => void; 
   onRichTextChange?: (editorState: SerializedEditorState) => void;
@@ -297,6 +362,8 @@ function TextEditorInner({
   expanded: boolean;
   onExpandToggle: () => void;
   content?: string;
+  ripComparisons?: QuoteComparison[];
+  sourceNames?: Record<number, string>;
 }) {
   const [editor] = useLexicalComposerContext();
   const [blockType, setBlockType] = useState("paragraph");
@@ -328,6 +395,8 @@ function TextEditorInner({
         expanded={expanded} 
         onExpandToggle={onExpandToggle} 
         content={content}
+        ripComparisons={ripComparisons}
+        sourceNames={sourceNames}
       />
     </ToolbarContext>
   );
@@ -343,7 +412,9 @@ function TextEditor({
   content, 
   onChange, 
   onRichTextChange,
-  placeholder = "Start typing..." 
+  placeholder = "Start typing...",
+  ripComparisons,
+  sourceNames
 }: TextEditorProps = {}) {
   const [expanded, setExpanded] = useState(false);
   
@@ -407,6 +478,8 @@ function TextEditor({
             expanded={expanded} 
             onExpandToggle={handleExpandToggle}
             content={content}
+            ripComparisons={ripComparisons}
+            sourceNames={sourceNames}
           />
         </TooltipProvider>
       </LexicalComposer>

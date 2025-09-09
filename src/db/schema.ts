@@ -105,6 +105,11 @@ export const articles = pgTable(
     blob: text("blob"),
     content: text("content"),
     richContent: text("rich_content"),
+    
+    // Rip Detection Results (from Step 9)
+    ripScore: integer("rip_score"),              // 0-100 score
+    ripAnalysis: text("rip_analysis"),           // Overall analysis text  
+    ripComparisons: text("rip_comparisons"),     // JSON string of QuoteComparison[]
 
 
 

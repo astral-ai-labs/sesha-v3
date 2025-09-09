@@ -14,6 +14,7 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { Article } from "@/db/schema";
 import { ArticleVersionMetadata } from "@/db/dal";
+import type { QuoteComparison } from "@/types/aggregate";
 
 /* ==========================================================================*/
 // Types
@@ -41,6 +42,12 @@ interface ArticleContextValue {
   lastModified: Date | null;
   createdByName: string;
   blobOutline: string;
+  
+  // Rip detection data
+  ripScore: number | null;
+  ripAnalysis: string | null;
+  ripComparisons: QuoteComparison[];
+  sourceNames: Record<number, string>;
   
   // Change tracking
   hasChanges: boolean;
@@ -205,6 +212,42 @@ function ArticleProvider({ children, articles, initialVersionDecimal }: ArticleP
     ? currentArticle.blob.split('\n').map(blob => `• ${blob}`).join('\n\n')
     : '';
   
+  // Parse rip detection data
+  const ripScore = currentArticle?.ripScore || null;
+  const ripAnalysis = currentArticle?.ripAnalysis || null;
+  const ripComparisons: QuoteComparison[] = React.useMemo(() => {
+    if (!currentArticle?.ripComparisons) return [];
+    try {
+      return JSON.parse(currentArticle.ripComparisons);
+    } catch (error) {
+      console.error('Failed to parse rip comparisons:', error);
+      return [];
+    }
+  }, [currentArticle?.ripComparisons]);
+
+  // Extract source names mapping from article data
+  const sourceNames: Record<number, string> = React.useMemo(() => {
+    if (!currentArticle) {
+      return {
+        1: "Source 1",
+        2: "Source 2", 
+        3: "Source 3",
+        4: "Source 4",
+        5: "Source 5",
+        6: "Source 6"
+      };
+    }
+    
+    return {
+      1: currentArticle.inputSourceAccredit1 || "Source 1",
+      2: currentArticle.inputSourceAccredit2 || "Source 2", 
+      3: currentArticle.inputSourceAccredit3 || "Source 3",
+      4: currentArticle.inputSourceAccredit4 || "Source 4",
+      5: currentArticle.inputSourceAccredit5 || "Source 5",
+      6: currentArticle.inputSourceAccredit6 || "Source 6"
+    };
+  }, [currentArticle]);
+  
   // Check if there are changes from the original
   const hasChanges = originalArticle && currentArticle ? (
     originalArticle.headline !== currentArticle.headline ||
@@ -251,6 +294,10 @@ function ArticleProvider({ children, articles, initialVersionDecimal }: ArticleP
     lastModified,
     createdByName,
     blobOutline,
+    ripScore,
+    ripAnalysis,
+    ripComparisons,
+    sourceNames,
     hasChanges,
     originalArticle,
     getCurrentArticleForNewVersion,

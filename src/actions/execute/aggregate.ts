@@ -49,9 +49,9 @@ import type {
   Step08ColorCodeResponse,
   Step08ColorCodeAIResponse,
   // TODO: Uncomment (and modify if necessary) the below
-  // Step09DetectRipsRequest,
-  // Step09DetectRipsResponse,
-  // Step09DetectRipsAIResponse,
+  Step09DetectRipsRequest,
+  Step09DetectRipsResponse,
+  Step09DetectRipsAIResponse,
   ArticleStepOutputs,
   AggregateSource,
 } from "@/types/aggregate";
@@ -1011,90 +1011,90 @@ async function step08ColorCode(articleId: string, step2Result: FactsBitSplitting
  * @param logger - Pipeline logger for logging
  * @returns Response with color coded article
  */
-// async function step09DetectRips(articleId: string, step2Result: FactsBitSplitting2Response, articleStepOutputs: ArticleStepOutputs, logger: ReturnType<typeof createPipelineLogger> | null): Promise<Step09DetectRipsResponse> {
-//   console.log("🚀 Step 9: Detect Rips");
+async function step09DetectRips(articleId: string, step2Result: FactsBitSplitting2Response, articleStepOutputs: ArticleStepOutputs, logger: ReturnType<typeof createPipelineLogger> | null): Promise<Step09DetectRipsResponse> {
+  console.log("🚀 Step 9: Detect Rips");
 
-//   try {
-//     // Prepare the request for the API
-//     const step09Request: Step09DetectRipsRequest = {
-//       sources: step2Result.sources,
-//       articleStepOutputs: articleStepOutputs
-//     };
+  try {
+    // Prepare the request for the API
+    const step09Request: Step09DetectRipsRequest = {
+      sources: step2Result.sources,
+      articleStepOutputs: articleStepOutputs
+    };
 
-//     // Log the step request
-//     if (logger) {
-//       logger.logStepRequest(9, "Detect Rips", step09Request);
-//     }
+    // Log the step request
+    if (logger) {
+      logger.logStepRequest(9, "Detect Rips", step09Request);
+    }
 
-//     // Call the API endpoint
-//     const response = await fetch(`${baseUrl}/api/aggregate-steps/09-detect-rips`, {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/json"
-//       },
-//       body: JSON.stringify(step09Request)
-//     });
+    // Call the API endpoint
+    const response = await fetch(`${baseUrl}/api/aggregate-steps/09-detect-rips`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(step09Request)
+    });
 
-//     if (!response.ok) {
-//       throw new Error(`API request failed: ${response.statusText}`);
-//     }
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
 
-//     const aiResult: Step09DetectRipsAIResponse = await response.json();
+    const aiResult: Step09DetectRipsAIResponse = await response.json();
 
-//     // Calculate token usage and cost
-//     const totals = calculateTotalTokensAndCostFromUsageArray(aiResult.usage);
+    // Calculate token usage and cost
+    const totals = calculateTotalTokensAndCostFromUsageArray(aiResult.usage);
 
-//     // Log the totals for debugging / analysis
-//     console.log(`Step 09 total input tokens: ${totals.totalInputTokens}`);
-//     console.log(`Step 09 total output tokens: ${totals.totalOutputTokens}`);
-//     console.log(`Step 09 total cost (USD): $${totals.totalCost.toFixed(6)}`);
+    // Log the totals for debugging / analysis
+    console.log(`Step 09 total input tokens: ${totals.totalInputTokens}`);
+    console.log(`Step 09 total output tokens: ${totals.totalOutputTokens}`);
+    console.log(`Step 09 total cost (USD): $${totals.totalCost.toFixed(6)}`);
 
-//     // Log the API request
-//     if (logger) {
-//       logger.logStepResponse(9, "Detect Rips", aiResult);
-//     }
+    // Log the API request
+    if (logger) {
+      logger.logStepResponse(9, "Detect Rips", aiResult);
+    }
 
-//     // Wrap AI response with article management
-//     const result: Step09DetectRipsResponse = {
-//       articleId,
-//       stepNumber: 9,
-//       success: true,
-//       quoteComparisons: aiResult.quoteComparisons,
-//       overallRipScore: aiResult.overallRipScore,
-//       ripAnalysis: aiResult.ripAnalysis,
-//       totals
-//     };
+    // Wrap AI response with article management
+    const result: Step09DetectRipsResponse = {
+      articleId,
+      stepNumber: 9,
+      success: true,
+      quoteComparisons: aiResult.quoteComparisons,
+      overallRipScore: aiResult.overallRipScore,
+      ripAnalysis: aiResult.ripAnalysis,
+      totals
+    };
 
-//     // Log step completion
-//     if (logger) {
-//       logger.logStepComplete(9, "Detect Rips", result);
-//     }
+    // Log step completion
+    if (logger) {
+      logger.logStepComplete(9, "Detect Rips", result);
+    }
 
-//     return result;
-//   } catch (error) {
-//     console.error("Step 9 - Detect rips failed: ", error);
+    return result;
+  } catch (error) {
+    console.error("Step 9 - Detect rips failed: ", error);
 
-//     // Log the error
-//     if (logger) {
-//       logger.logError("STEP_9_ERROR", error);
-//     }
+    // Log the error
+    if (logger) {
+      logger.logError("STEP_9_ERROR", error);
+    }
 
-//     // Return nulls as specified (DO NOT FAIL THE PIPELINE)
-//     return {
-//       articleId,
-//       stepNumber: 9,
-//       success: false,
-//       quoteComparisons: [],
-//       overallRipScore: 0,
-//       ripAnalysis: "",
-//       totals: {
-//         totalInputTokens: 0,
-//         totalOutputTokens: 0,
-//         totalCost: 0
-//       }
-//     };
-//   }
-// }
+    // Return nulls as specified (DO NOT FAIL THE PIPELINE)
+    return {
+      articleId,
+      stepNumber: 9,
+      success: false,
+      quoteComparisons: [],
+      overallRipScore: 0,
+      ripAnalysis: "",
+      totals: {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0
+      }
+    };
+  }
+}
 
 /* ==========================================================================*/
 // Main Pipeline Handler
@@ -1292,39 +1292,51 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
     totalOutputTokens += step8Result.totals.totalOutputTokens;
     totalCost += step8Result.totals.totalCost;
 
-    // TODO: Uncomment (and modify if necessary) the below
-    // const step9Result = await step09DetectRips(articleId, step2Result, articleStepOutputs, logger);
+    // Update articleStepOutputs with step 8 results for rip detection
+    articleStepOutputs.colorCode = {
+      text: step8Result.colorCodedArticle,
+    };
 
-    // // Update articleStepsOutput with step 9 results (even if failed)
-    // if (step9Result.success) {
-    //   articleStepOutputs.detectRips = {
-    //     quoteComparisons: step9Result.quoteComparisons,
-    //     overallRipScore: step9Result.overallRipScore,
-    //     ripAnalysis: step9Result.ripAnalysis
-    //   };
-    // } else {
-    //   console.log("⚠️ Step 9 (Detect Rips) failed, but continuing pipeline");
+    // Step 9: Detect Rips (now has access to color-coded article)
+    const step9Result = await step09DetectRips(articleId, step2Result, articleStepOutputs, logger);
+
+    // Update articleStepsOutput with step 9 results (even if failed)
+    if (step9Result.success) {
+      articleStepOutputs.detectRips = {
+        quoteComparisons: step9Result.quoteComparisons,
+        overallRipScore: step9Result.overallRipScore,
+        ripAnalysis: step9Result.ripAnalysis
+      };
+    } else {
+      console.log("⚠️ Step 9 (Detect Rips) failed, but continuing pipeline");
       
-    //   articleStepOutputs.detectRips = {
-    //     quoteComparisons: [],
-    //     overallRipScore: 0,
-    //     ripAnalysis: ""
-    //   };
-    // };
+      articleStepOutputs.detectRips = {
+        quoteComparisons: [],
+        overallRipScore: 0,
+        ripAnalysis: ""
+      };
+    };
 
-    // totalInputTokens += step9Result.totals.totalInputTokens;
-    // totalOutputTokens += step9Result.totals.totalOutputTokens;
-    // totalCost += step9Result.totals.totalCost;
+    totalInputTokens += step9Result.totals.totalInputTokens;
+    totalOutputTokens += step9Result.totals.totalOutputTokens;
+    totalCost += step9Result.totals.totalCost;
 
     // Validate pipeline success
     const isSuccessful = validatePipelineSuccess(step1Result, step2Result, step3Result, step4Result, step5Result, step6Result, step7Result, step8Result);
 
-    // TODO: Uncomment (and modify if necessary) the below
-    // TODO: Not sure how we will interact with the DAL and what we will have to change with the schema, so wait!
-    // await updateArticleWithResults(articleId, request.metadata.userId, isSuccessful, step3Result.headline, step3Result.blobs, step8Result.colorCodedArticle, step8Result.richContent, step9Result.overallRipScore, step9Result.ripAnalysis)
-
-    // Update article with results
-    await updateArticleWithResults(articleId, request.metadata.userId, isSuccessful, step3Result.headline, step3Result.blobs, step8Result.colorCodedArticle, step8Result.richContent);
+    // Update article with results including rip detection data
+    await updateArticleWithResults(
+      articleId, 
+      request.metadata.userId, 
+      isSuccessful, 
+      step3Result.headline, 
+      step3Result.blobs, 
+      step8Result.colorCodedArticle, 
+      step8Result.richContent,
+      step9Result.overallRipScore,
+      step9Result.ripAnalysis,
+      step9Result.quoteComparisons
+    );
 
     // Build response
     const response: PipelineResponse = {

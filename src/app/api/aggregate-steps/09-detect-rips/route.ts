@@ -1,278 +1,306 @@
-// // src/app/api/aggregate-steps/09-detect-rips/route.ts
-// // TODO: Uncomment (and modify if necessary) the below
+// src/app/api/aggregate-steps/09-detect-rips/route.ts
+// TODO: Uncomment (and modify if necessary) the below
 
-// /* ==========================================================================*/
-// // route.ts — Step 09: Detect Rips API Route
-// /* ==========================================================================*/
-// // Purpose: AI-powered plagiarism detection between generated article and sources
-// // Sections: Imports, Configuration, Prompts, Route Handler, Helper Functions
+/* ==========================================================================*/
+// route.ts — Step 09: Detect Rips API Route
+/* ==========================================================================*/
+// Purpose: AI-powered plagiarism detection between generated article and sources
+// Sections: Imports, Configuration, Prompts, Route Handler, Helper Functions
 
-// /* ==========================================================================*/
-// // Imports
-// /* ==========================================================================*/
+/* ==========================================================================*/
+// Imports
+/* ==========================================================================*/
 
-// // Next.js Core ---
-// import { NextRequest, NextResponse } from "next/server";
+// Next.js Core ---
+import { NextRequest, NextResponse } from "next/server";
 
-// // AI SDK Core ---
-// import { generateText } from "ai";
+// AI SDK Core ---
+import { generateText } from "ai";
 
-// // Local Utilities ---
-// import { formatPrompt2, PromptType, validateRequest } from "@/lib/utils";
-// import { createPipelineLogger } from "@/lib/pipeline-logger";
+// Local Utilities ---
+import { formatPrompt2, PromptType, validateRequest } from "@/lib/utils";
+import { createPipelineLogger } from "@/lib/pipeline-logger";
 
-// // Local Types ---
-// // import { Step09DetectRequest, Step09DetectRipsAIResponse } from "@/types/aggregate";
-// import { anthropic } from "@ai-sdk/anthropic";
+// External Packages ---
+import * as cheerio from 'cheerio';
 
-// /* ==========================================================================*/
-// // Configuration
-// /* ==========================================================================*/
+// Local Types ---
+// import { Step09DetectRequest, Step09DetectRipsAIResponse } from "@/types/aggregate";
+import { anthropic } from "@ai-sdk/anthropic";
+import { Step09DetectRipsAIResponse, Step09DetectRipsRequest } from "@/types/aggregate";
 
-// const MODEL = anthropic("claude-3-5-sonnet-20240620");
-// const TEMPERATURE = 0.3;
-// const MAX_TOKENS = 4000;
+/* ==========================================================================*/
+// Configuration
+/* ==========================================================================*/
 
-// /* ==========================================================================*/
-// // System Prompt
-// /* ==========================================================================*/
+const MODEL = anthropic("claude-3-5-sonnet-20240620");
+const TEMPERATURE = 0.3;
+const MAX_TOKENS = 4000;
 
-// const SYSTEM_PROMPT = `
-// You are an expert plagiarism detection specialist. Your task is to analyze a generated article against its source materials to identify potential instances of text that is too closely worded to the original sources.
+/* ==========================================================================*/
+// System Prompt
+/* ==========================================================================*/
 
-// Your analysis should focus on:
-// 1. Direct quotes that are too similar to source text
-// 2. Paraphrasing that is too close to original wording
-// 3. Sentence structures that mirror source material too closely
-// 4. Overall similarity assessment
+const SYSTEM_PROMPT = `
+You are an expert plagiarism detection specialist. Your task is to analyze a generated article against its source materials to identify potential instances of text that is too closely worded to the original sources.
 
-// For each potential rip, provide:
-// - The specific text from the generated article
-// - The corresponding text from the source
-// - A brief analysis of why this constitutes a rip
+Your analysis should focus on:
+1. Direct quotes that are too similar to source text
+2. Paraphrasing that is too close to original wording
+3. Sentence structures that mirror source material too closely
+4. Overall similarity assessment
 
-// Output a rip score from 0-100 where:
-// - 0-20: Original content with minimal similarity
-// - 21-40: Some similarity but generally original
-// - 41-60: Moderate similarity, some concerns
-// - 61-80: High similarity, significant concerns
-// - 81-100: Very high similarity, major plagiarism concerns
+RESPONSE FORMAT:
+You must respond with valid JSON in exactly this format:
 
-// Be thorough but fair in your assessment.
-// `;
+{
+  "analysis": "Your detailed analysis of the article's originality vs source similarity",
+  "overallScore": 0-100,
+  "quoteComparisons": [
+    {
+      "articleQuote": "exact text from article",
+      "sourceQuote": "exact text from source", 
+      "sourceNumber": 1-6,
+      "ripAnalysis": "why this constitutes a rip"
+    }
+  ]
+}
 
-// /* ==========================================================================*/
-// // User Prompt
-// /* ==========================================================================*/
+If you find no rips, use an empty array for quoteComparisons.
+Score meanings: 0-20 (original), 21-40 (some similarity), 41-60 (moderate concerns), 61-80 (high similarity), 81-100 (major plagiarism).
 
-// const USER_PROMPT = `
-// Please analyze the following generated article against its source materials for potential plagiarism or overly similar wording.
+Be thorough but fair in your assessment.
+`;
 
-// GENERATED ARTICLE:
-// {rewrittenArticle}
+/* ==========================================================================*/
+// User Prompt
+/* ==========================================================================*/
 
-// SOURCE MATERIALS:
-// {sources}
+const USER_PROMPT = `
+Please analyze the following generated article against its source materials for potential plagiarism or overly similar wording.
 
-// Analyze each potential rip and provide your assessment.
-// `;
+GENERATED ARTICLE:
+{{rewrittenArticle}}
 
-// /* ==========================================================================*/
-// // Assistant Prompt
-// /* ==========================================================================*/
+SOURCE MATERIALS:
+{{#sources}}
+Source {{number}} ({{accredit}}):
+{{text}}
 
-// const ASSISTANT_PROMPT = `
-// I'll analyze the generated article against the source materials for potential plagiarism. Let me examine the text carefully and provide a detailed assessment.
+{{/sources}}
 
-// <analysis>
-// {ripAnalysis}
-// </analysis>
+Analyze each potential rip and provide your assessment.
+`;
 
-// <quote-comparisons>
-// {quoteComparisons}
-// </quote-comparisons>
+/* ==========================================================================*/
+// Assistant Prompt
+/* ==========================================================================*/
 
-// <overall-score>
-// {overallRipScore}
-// </overall-score>
-// `;
+const ASSISTANT_PROMPT = ``;  // Empty - let AI respond naturally
 
-// /* ==========================================================================*/
-// // Route Handler
-// /* ==========================================================================*/
+/* ==========================================================================*/
+// Route Handler
+/* ==========================================================================*/
 
-// export async function POST(request: NextRequest) {
-//   try {
-//     const body: Step09DetectRipsRequest = await request.json();
+export async function POST(request: NextRequest) {
+  try {
+    const body: Step09DetectRipsRequest = await request.json();
 
-//     // Validate required fields ------
-//     const validationError = validateRequest(
-//       Boolean(body.articleStepOutputs?.rewriteArticle2?.text),
-//       {
-//         quoteComparisons: [],
-//         overallRipScore: 0,
-//         ripAnalysis: ""
-//       } as Step09DetectRipsAIResponse
-//     );
-//     if (validationError) return validationError;
+    // DEBUG: Log what sources we received
+    console.log("=== STEP 9 DEBUG ===");
+    console.log("Number of sources received:", body.sources?.length || 0);
+    console.log("Source numbers:", body.sources?.map(s => s.number) || []);
+    console.log("Source accredits:", body.sources?.map(s => s.accredit) || []);
+    console.log("==================");
 
-//     // Format System Prompt ------
-//     const finalSystemPrompt = formatPrompt2(SYSTEM_PROMPT, undefined, PromptType.SYSTEM);
+    // Validate required fields ------
+    const validationError = validateRequest(
+      Boolean(body.articleStepOutputs?.colorCode?.text),
+      {
+        quoteComparisons: [],
+        overallRipScore: 0,
+        ripAnalysis: "",
+        usage: []
+      } as Step09DetectRipsAIResponse
+    );
+    if (validationError) return validationError;
 
-//     // Format User Prompt ------
-//     const finalUserPrompt = formatPrompt2(
-//       USER_PROMPT,
-//       {
-//         rewrittenArticle: body.articleStepOutputs?.rewriteArticle2?.text || "",
-//         sources: body.sources.map(source => ({
-//           number: source.number,
-//           url: source.url,
-//           text: source.text,
-//           accredit: source.accredit
-//         }))
-//       },
-//       PromptType.USER
-//     );
+    // Format System Prompt ------
+    const finalSystemPrompt = formatPrompt2(SYSTEM_PROMPT, undefined, PromptType.SYSTEM);
 
-//     // Format Assistant Prompt ------
-//     const finalAssistantPrompt = formatPrompt2(ASSISTANT_PROMPT, undefined, PromptType.ASSISTANT);
+    // Extract text the same way Lexical will display it (matching Step 8 logic)
+    const colorCodedText = body.articleStepOutputs?.colorCode?.text || "";
+    const cleanText = extractLexicalDisplayText(colorCodedText);
 
-//     // Create a route-specific logger for this step
-//     const logger = createPipelineLogger(`route-step09-${Date.now()}`, "aggregate");
-//     logger.logStepPrompts(9, "Detect Rips", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
+    // Format User Prompt ------
+    const finalUserPrompt = formatPrompt2(
+      USER_PROMPT,
+      {
+        rewrittenArticle: cleanText,
+        sources: body.sources.map(source => ({
+          number: source.number,
+          url: source.url,
+          text: source.text,
+          accredit: source.accredit
+        }))
+      },
+      PromptType.USER
+    );
 
-//     // Generate text
-//     const { text: ripAnalysis, usage } = await generateText({
-//       model: MODEL,
-//       system: finalSystemPrompt,
-//       messages: [
-//         {
-//           role: "user",
-//           content: finalUserPrompt
-//         },
-//         {
-//           role: "assistant",
-//           content: finalAssistantPrompt || "",
-//         }
-//       ],
-//       temperature: TEMPERATURE,
-//       maxTokens: MAX_TOKENS
-//     });
+    // No assistant prompt - let AI respond naturally
+    const finalAssistantPrompt = "";
 
-//     // Parse the AI response to extract structured data
-//     const parsedResponse = parseRipAnalysisResponse(ripAnalysis);
+    // Create a route-specific logger for this step
+    const logger = createPipelineLogger(`route-step09-${Date.now()}`, "aggregate");
+    logger.logStepPrompts(9, "Detect Rips", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
 
-//     // Build response
-//     const response: Step09DetectRipsAIResponse = {
-//       quoteComparisons: parsedResponse.quoteComparisons,
-//       overallRipScore: parsedResponse.overallRipScore,
-//       ripAnalysis: parsedResponse.ripAnalysis,
-//       usage: [
-//         {
-//           inputTokens: usage?.promptTokens ?? 0,
-//           outputTokens: usage?.completionTokens ?? 0,
-//           model: MODEL.modelId,
-//           ...usage
-//         }
-//       ]
-//     };
+    // Generate text
+    const { text: ripAnalysis, usage } = await generateText({
+      model: MODEL,
+      system: finalSystemPrompt,
+      messages: [
+        {
+          role: "user",
+          content: finalUserPrompt
+        },
+        // No assistant prompt - let AI respond naturally
+      ],
+      temperature: TEMPERATURE,
+      maxTokens: MAX_TOKENS
+    });
 
-//     logger.logStepResponse(9, "Detect Rips", response);
+    // Log the raw AI response for debugging
+    console.log("=== RAW AI RESPONSE ===");
+    console.log(ripAnalysis);
+    console.log("=== END AI RESPONSE ===");
 
-//     // Close the logger to ensure logs are flushed
-//     await logger.close();
+    // Parse the AI response to extract structured data
+    const parsedResponse = parseRipAnalysisResponse(ripAnalysis);
 
-//     return NextResponse.json(response);
-//   } catch (error) {
-//     console.error("Step 09 - Detect rips failed: ", error);
+    // Build response
+    const response: Step09DetectRipsAIResponse = {
+      quoteComparisons: parsedResponse.quoteComparisons,
+      overallRipScore: parsedResponse.overallRipScore,
+      ripAnalysis: parsedResponse.ripAnalysis,
+      usage: [
+        {
+          inputTokens: usage?.promptTokens ?? 0,
+          outputTokens: usage?.completionTokens ?? 0,
+          model: MODEL.modelId,
+          ...usage
+        }
+      ]
+    };
 
-//     const errorResponse: Step09DetectRipsAIResponse = {
-//       quoteComparisons: [],
-//       overallRipScore: 0,
-//       ripAnalysis: "",
-//       usage: []
-//     };
+    logger.logStepResponse(9, "Detect Rips", response);
 
-//     return NextResponse.json(errorResponse, { status: 500 });
-//   }
-// }
+    // Close the logger to ensure logs are flushed
+    await logger.close();
 
-// /* ==========================================================================*/
-// // Helper Functions
-// /* ==========================================================================*/
+    return NextResponse.json(response);
+  } catch (error) {
+    console.error("Step 09 - Detect rips failed: ", error);
 
-// /**
-//  * parseRipAnalysisResponse
-//  *
-//  * Parse the AI response to extract structured rip analysis data.
-//  * Handles various response formats and provides fallbacks.
-//  *
-//  * @param aiResponse - Raw AI response text
-//  * @returns Parsed rip analysis with quote comparisons and score
-//  */
-// function parseRipAnalysisResponse(aiResponse: string): {
-//   quoteComparisons: Array<{
-//     articleQuote: string;
-//     sourceQuote: string;
-//     ripAnalysis: string;
-//   }>;
-//   overallRipScore: number;
-//   ripAnalysis: string;
-// } {
-//   try {
-//     // Extract rip analysis summary
-//     const analysisMatch = aiResponse.match(/<analysis>([\s\S]*?)<\/analysis>/);
-//     const ripAnalysis = analysisMatch ? analysisMatch[1].trim() : aiResponse.substring(0, 500);
+    const errorResponse: Step09DetectRipsAIResponse = {
+      quoteComparisons: [],
+      overallRipScore: 0,
+      ripAnalysis: "",
+      usage: []
+    };
 
-//     // Extract overall score
-//     const scoreMatch = aiResponse.match(/<overall-score>(\d+)<\/overall-score>/);
-//     const overallRipScore = scoreMatch ? parseInt(scoreMatch[1], 10) : 50; // Default to 50 if parsing fails
+    return NextResponse.json(errorResponse, { status: 500 });
+  }
+}
 
-//     // Extract quote comparisons
-//     const quoteComparisons: Array<{
-//       articleQuote: string;
-//       sourceQuote: string;
-//       ripAnalysis: string;
-//     }> = [];
+/* ==========================================================================*/
+// Helper Functions
+/* ==========================================================================*/
 
-//     // Look for quote comparison patterns in the response
-//     const quotePattern = /article quote[:\s]+[""]([^""]+)[""][\s\S]*?source quote[:\s]+[""]([^""]+)[""][\s\S]*?analysis[:\s]+([^""]+)/gi;
-//     let match;
+/**
+ * extractLexicalDisplayText
+ * 
+ * Extracts text from color-coded HTML exactly as Lexical will display it.
+ * Uses the same cheerio parsing logic as Step 8 to ensure text matching consistency.
+ * 
+ * @param colorCodedHtml - HTML with color-coded spans from Step 8
+ * @returns Clean text string that matches Lexical's text content
+ */
+function extractLexicalDisplayText(colorCodedHtml: string): string {
+  const $ = cheerio.load(colorCodedHtml);
+  
+  const textParts: string[] = [];
+  
+  $("p").each((_, p) => {
+    const paragraphParts: string[] = [];
     
-//     while ((match = quotePattern.exec(aiResponse)) !== null) {
-//       quoteComparisons.push({
-//         articleQuote: match[1].trim(),
-//         sourceQuote: match[2].trim(),
-//         ripAnalysis: match[3].trim(),
-//       });
-//     }
-
-//     // If no structured quotes found, create a generic analysis
-//     if (quoteComparisons.length === 0) {
-//       quoteComparisons.push({
-//         articleQuote: "Analysis completed",
-//         sourceQuote: "Source materials reviewed",
-//         ripAnalysis: "AI analysis completed - review full response for details",
-//       });
-//     }
-
-//     return {
-//       quoteComparisons,
-//       overallRipScore: Math.max(0, Math.min(100, overallRipScore)), // Ensure score is 0-100
-//       ripAnalysis,
-//     };
-//   } catch (error) {
-//     console.error("Failed to parse rip analysis response:", error);
+    $(p).find("span").each((_, span) => {
+      const text = $(span).text().trim();
+      if (text) {
+        paragraphParts.push(text);
+      }
+    });
     
-//     // Return fallback response
-//     return {
-//       quoteComparisons: [{
-//         articleQuote: "Parsing failed",
-//         sourceQuote: "Error in response parsing",
-//         ripAnalysis: "Failed to parse AI response - manual review required",
-//       }],
-//       overallRipScore: 50,
-//       ripAnalysis: "Error parsing AI response. Original response: " + aiResponse.substring(0, 200),
-//     };
-//   }
-// }
+    if (paragraphParts.length > 0) {
+      textParts.push(paragraphParts.join(' '));
+    }
+  });
+  
+  return textParts.join('\n').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * parseRipAnalysisResponse
+ *
+ * Parse the AI response as JSON to extract structured rip analysis data.
+ * Much simpler than XML parsing - just use JSON.parse().
+ *
+ * @param aiResponse - Raw AI response text (should be JSON)
+ * @returns Parsed rip analysis with quote comparisons and score
+ */
+function parseRipAnalysisResponse(aiResponse: string): {
+  quoteComparisons: Array<{
+    articleQuote: string;
+    sourceQuote: string;
+    sourceNumber: number;
+    ripAnalysis: string;
+  }>;
+  overallRipScore: number;
+  ripAnalysis: string;
+} {
+  try {
+    // Simply parse as JSON - much more reliable than regex
+    const parsed = JSON.parse(aiResponse);
+    
+    return {
+      quoteComparisons: parsed.quoteComparisons || [],
+      overallRipScore: Math.max(0, Math.min(100, parsed.overallScore || 0)),
+      ripAnalysis: parsed.analysis || "No analysis provided",
+    };
+  } catch (error) {
+    console.error("Failed to parse rip analysis JSON response:", error);
+    console.log("Raw AI response that caused error:", aiResponse);
+    
+    // Fallback: try to extract any JSON-like content from the response
+    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        console.log("Successfully parsed JSON from partial match");
+        return {
+          quoteComparisons: parsed.quoteComparisons || [],
+          overallRipScore: Math.max(0, Math.min(100, parsed.overallScore || 0)),
+          ripAnalysis: parsed.analysis || "Partial analysis recovered",
+        };
+      } catch (fallbackError) {
+        console.error("Fallback JSON parsing also failed:", fallbackError);
+      }
+    }
+    
+    // Final fallback
+    return {
+      quoteComparisons: [],
+      overallRipScore: 0,
+      ripAnalysis: "Error parsing AI response - please check logs for full response",
+    };
+  }
+}

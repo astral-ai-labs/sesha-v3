@@ -55,7 +55,7 @@ import TextEditor from "../text-editor/TextEditor";
  * Simple component that displays article content in a textarea.
  */
 function ArticleContent() {
-  const { currentArticle, setCurrentVersion, hasChanges, updateCurrentArticle } = useArticle();
+  const { currentArticle, setCurrentVersion, hasChanges, updateCurrentArticle, ripComparisons, sourceNames } = useArticle();
   const router = useRouter();
   // const [expanded, setExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -194,6 +194,8 @@ function ArticleContent() {
           onChange={(newContent) => handleContentChange(newContent)}
           onRichTextChange={handleRichTextChange}
           placeholder="No content available."
+          ripComparisons={ripComparisons}
+          sourceNames={sourceNames}
         />
         {/* <Textarea
           id="article-content"

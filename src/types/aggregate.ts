@@ -97,11 +97,11 @@ export interface ArticleStepOutputs {
   };
   // TODO: Uncomment (and modify if necessary) the below
 
-  // detectRips?: {
-  //   quoteComparisons: SourceComparisonDialogProps;
-  //   overallRipScore: number;
-  //   ripAnalysis: string;
-  // };
+  detectRips?: {
+    quoteComparisons: QuoteComparison[];
+    overallRipScore: number;
+    ripAnalysis: string;
+  };
 }
 
 // ==========================================================================
@@ -345,33 +345,33 @@ export interface Step08ColorCodeResponse extends BaseStepResponse {
 
 // TODO: Uncomment (and modify if necessary) the below
 
-// export interface Step09DetectRipsRequest {
-//   sources: Source[];
-//   articleStepOutputs: ArticleStepOutputs;
-// }
+export interface Step09DetectRipsRequest {
+  sources: Source[];
+  articleStepOutputs: ArticleStepOutputs;
+}
 
-// export interface Step09DetectRipsAIResponse {
-//   quoteComparisons: QuoteComparison[];
-//   overallRipScore: number;  // 0 - 100 scale?
-//   ripAnalysis: string;  // Overall rip summary analysis
-//   usage: {
-//     inputTokens: number;
-//     outputTokens: number;
-//     model: string;
-//     [key: string]: unknown;
-//   }[];
-// }
+export interface Step09DetectRipsAIResponse {
+  quoteComparisons: QuoteComparison[];
+  overallRipScore: number;  // 0 - 100 scale?
+  ripAnalysis: string;  // Overall rip summary analysis
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    [key: string]: unknown;
+  }[];
+}
 
-// export interface Step09DetectRipsResponse extends BaseStepResponse {
-//   quoteComparisons: QuoteComparison[];
-//   overallRipScore: number;  // 0 - 100 scale?
-//   ripAnalysis: string;  // Overall rip summary analysis
-//   totals: {
-//     totalInputTokens: number;
-//     totalOutputTokens: number;
-//     totalCost: number;
-//   }
-// }
+export interface Step09DetectRipsResponse extends BaseStepResponse {
+  quoteComparisons: QuoteComparison[];
+  overallRipScore: number;  // 0 - 100 scale?
+  ripAnalysis: string;  // Overall rip summary analysis
+  totals: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+  }
+}
 
 // ==========================================================================
 // Rip Helpers (Step 9 - Detect Rips)
@@ -379,15 +379,16 @@ export interface Step08ColorCodeResponse extends BaseStepResponse {
 
 // TODO: Uncomment (and modify if necessary) the below
 
-// export interface QuoteComparison {
-//   articleQuote: string;
-//   sourceQuote: string;
-//   ripAnalysis: string;
-// }
+export interface QuoteComparison {
+  articleQuote: string;
+  sourceQuote: string;
+  sourceNumber: number;
+  ripAnalysis: string;
+}
 
-// export interface SourceComparisonDialogProps {
-//   quoteTuples: QuoteComparison[];
-// }
+export interface SourceComparisonDialogProps {
+  quoteTuples: QuoteComparison[];
+}
 
 // ==========================================================================
 // Aggregate Source (with usage/model for cost tracking)

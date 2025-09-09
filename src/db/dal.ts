@@ -16,6 +16,7 @@ import { db } from "./index";
 import { users, articles, organizations, presets, runs } from "./schema";
 
 import type { NewUser, User, Preset, Article, ArticleStatus, Organization, NewPreset, BlobsCount, LengthRange, SourceType, Run, NewRun } from "./schema";
+import type { QuoteComparison } from "@/types/aggregate";
 
 import { eq, and, sql, desc, gte } from "drizzle-orm";
 
@@ -282,6 +283,9 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
       blob: articles.blob,
       content: articles.content,
       richContent: articles.richContent,
+      ripScore: articles.ripScore,
+      ripAnalysis: articles.ripAnalysis,
+      ripComparisons: articles.ripComparisons,
       sourceType: articles.sourceType,
 
       // 1st source
@@ -577,8 +581,22 @@ export async function createAiArticleRecord(payload: {
  * @param blobs - Generated blobs from step 3
  * @param formattedArticle - Final formatted article from step 8
  * @param richContent - Rich content JSON from step 8 (optional)
+ * @param ripScore - Plagiarism score from step 9 (optional)
+ * @param ripAnalysis - Plagiarism analysis from step 9 (optional)
+ * @param ripComparisons - Quote comparisons from step 9 (optional)
  */
-export async function updateArticleWithResults(articleId: string, userId: string, isSuccessful: boolean, headline: string, blobs: string[], formattedArticle: string, richContent?: string): Promise<void> {
+export async function updateArticleWithResults(
+  articleId: string, 
+  userId: string, 
+  isSuccessful: boolean, 
+  headline: string, 
+  blobs: string[], 
+  formattedArticle: string, 
+  richContent?: string,
+  ripScore?: number,
+  ripAnalysis?: string,
+  ripComparisons?: QuoteComparison[]
+): Promise<void> {
   await db
     .update(articles)
     .set({
@@ -587,6 +605,9 @@ export async function updateArticleWithResults(articleId: string, userId: string
       blob: isSuccessful ? blobs.join("\n") : null,
       content: isSuccessful ? formattedArticle : null,
       richContent: isSuccessful && richContent ? richContent : null,
+      ripScore: ripScore ?? null,
+      ripAnalysis: ripAnalysis ?? null,
+      ripComparisons: ripComparisons ? JSON.stringify(ripComparisons) : null,
       updatedBy: userId,
       updatedAt: new Date(),
     })
