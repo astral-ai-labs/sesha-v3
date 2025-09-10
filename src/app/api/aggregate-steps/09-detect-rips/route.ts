@@ -44,11 +44,50 @@ const MAX_TOKENS = 4000;
 const SYSTEM_PROMPT = `
 You are an expert plagiarism detection specialist. Your task is to analyze a generated article against its source materials to identify potential instances of text that is too closely worded to the original sources.
 
+IMPORTANT: Quotes with proper attribution are NOT plagiarism. Only flag actual plagiarism where content is copied without appropriate credit or citation.
+
 Your analysis should focus on:
-1. Direct quotes that are too similar to source text
-2. Paraphrasing that is too close to original wording
-3. Sentence structures that mirror source material too closely
-4. Overall similarity assessment
+1. Direct copying without quotation marks or attribution
+2. Paraphrasing that is too close to original wording without citation
+3. Sentence structures that mirror source material too closely without attribution
+4. Mosaic/patchwork plagiarism (mixing phrases from different sources)
+
+EXAMPLES OF PLAGIARISM (FLAG THESE):
+
+1. VERBATIM COPYING WITHOUT ATTRIBUTION:
+Source: "Climate change represents the greatest threat to global food security in the 21st century."
+Article: "Climate change represents the greatest threat to global food security in the 21st century."
+→ PLAGIARISM: Exact copy with no quotation marks or citation
+
+2. INADEQUATE PARAPHRASE:
+Source: "The rapid melting of Arctic ice caps is accelerating sea level rise at an unprecedented rate."
+Article: "The quick melting of Arctic ice caps is speeding up sea level rise at an unprecedented pace."
+→ PLAGIARISM: Only minor word changes while keeping original structure
+
+3. MOSAIC PLAGIARISM:
+Source 1: "Economic instability" Source 2: "threatens global markets"
+Article: "Economic instability threatens global markets without addressing underlying causes."
+→ PLAGIARISM: Combining phrases from multiple sources without attribution
+
+EXAMPLES OF PROPER USAGE (DO NOT FLAG):
+
+1. PROPER QUOTATION WITH ATTRIBUTION:
+Article: 'According to the climate report, "Climate change represents the greatest threat to global food security in the 21st century."'
+→ NOT PLAGIARISM: Proper quotation marks and attribution
+
+2. PROPER PARAPHRASE WITH CITATION:
+Source: "The rapid melting of Arctic ice caps is accelerating sea level rise at an unprecedented rate."
+Article: "Scientists have found that Arctic ice loss is contributing significantly to rising ocean levels (Climate Study 2024)."
+→ NOT PLAGIARISM: Ideas rephrased in new words with citation
+
+3. COMMON KNOWLEDGE:
+Article: "Water boils at 100 degrees Celsius at sea level."
+→ NOT PLAGIARISM: Common knowledge doesn't require citation
+
+4. FACTUAL INFORMATION WITH CONTEXT:
+Source: "The study found 75% of respondents supported the policy."
+Article: "Recent research indicates that three-quarters of those surveyed favored the new policy approach."
+→ NOT PLAGIARISM: Facts presented in new context and wording
 
 RESPONSE FORMAT:
 You must respond with valid JSON in exactly this format:
@@ -69,7 +108,14 @@ You must respond with valid JSON in exactly this format:
 If you find no rips, use an empty array for quoteComparisons.
 Score meanings: 0-20 (original), 21-40 (some similarity), 41-60 (moderate concerns), 61-80 (high similarity), 81-100 (major plagiarism).
 
-Be thorough but fair in your assessment.
+ANALYSIS REQUIREMENTS:
+1. **Be Comprehensive**: Analyze the ENTIRE article systematically, paragraph by paragraph
+2. **Check All Sources**: Compare against ALL provided source materials, not just a few
+3. **Multiple Instance Detection**: Look for ALL potential plagiarism instances - there may be many throughout the article
+4. **Varying Severity**: Flag both obvious copying AND subtle cases of inadequate paraphrasing
+5. **Complete Documentation**: Report every problematic passage you find, even if there are 10+ instances
+
+Be thorough and systematic in your assessment. Your goal is to catch ALL plagiarism instances, not just the most obvious ones. Only exclude proper quotations, citations, or legitimate paraphrasing.
 `;
 
 /* ==========================================================================*/
@@ -78,6 +124,13 @@ Be thorough but fair in your assessment.
 
 const USER_PROMPT = `
 Please analyze the following generated article against its source materials for potential plagiarism or overly similar wording.
+
+ANALYSIS INSTRUCTIONS:
+1. Read through the ENTIRE generated article systematically
+2. For each paragraph/section, check against ALL source materials
+3. Look for verbatim copying, inadequate paraphrasing, and mosaic plagiarism
+4. Document EVERY instance you find - do not stop at just 1-2 examples
+5. Be especially vigilant for subtle plagiarism that maintains original sentence structure
 
 GENERATED ARTICLE:
 {{rewrittenArticle}}
@@ -89,14 +142,14 @@ Source {{number}} ({{accredit}}):
 
 {{/sources}}
 
-Analyze each potential rip and provide your assessment.
+Perform a comprehensive analysis and report ALL plagiarism instances you discover. Your thoroughness in finding every problematic passage is critical.
 `;
 
 /* ==========================================================================*/
 // Assistant Prompt
 /* ==========================================================================*/
 
-const ASSISTANT_PROMPT = ``;  // Empty - let AI respond naturally
+// No assistant prompt needed - let AI respond naturally
 
 /* ==========================================================================*/
 // Route Handler
@@ -147,12 +200,11 @@ export async function POST(request: NextRequest) {
       PromptType.USER
     );
 
-    // No assistant prompt - let AI respond naturally
-    const finalAssistantPrompt = "";
+    // No assistant prompt needed
 
     // Create a route-specific logger for this step
     const logger = createPipelineLogger(`route-step09-${Date.now()}`, "aggregate");
-    logger.logStepPrompts(9, "Detect Rips", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
+    logger.logStepPrompts(9, "Detect Rips", finalSystemPrompt, finalUserPrompt, "");
 
     // Generate text
     const { text: ripAnalysis, usage } = await generateText({

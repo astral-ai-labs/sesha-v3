@@ -14,7 +14,7 @@
 import React, { useEffect, useState } from "react";
 
 // UI Components ---
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 /* ==========================================================================*/
 // Types
@@ -127,7 +127,7 @@ export function RipTooltipManager({ isEnabled, ripComparisons }: RipTooltipManag
       setShowTooltip(false);
       setTooltipData(null);
     };
-  }, [isEnabled]);
+  }, [isEnabled, ripComparisons]);
 
   if (!showTooltip || !tooltipData) {
     return null;
@@ -150,7 +150,7 @@ export function RipTooltipManager({ isEnabled, ripComparisons }: RipTooltipManag
             Source {tooltipData.sourceNumber}
           </div>
           <div className="mb-2 italic">
-            "{tooltipData.sourceQuote}"
+            &ldquo;{tooltipData.sourceQuote}&rdquo;
           </div>
           <div className="text-xs opacity-90">
             {tooltipData.ripAnalysis}
@@ -168,7 +168,6 @@ export function RipTooltipManager({ isEnabled, ripComparisons }: RipTooltipManag
  */
 export function RipTooltipContent({
   sourceNumber,
-  sourceName,
   sourceQuote,
   ripAnalysis
 }: RipTooltipData) {
@@ -178,7 +177,7 @@ export function RipTooltipContent({
         Source {sourceNumber}
       </div>
       <div className="mb-2 italic text-xs">
-        "{sourceQuote}"
+        &ldquo;{sourceQuote}&rdquo;
       </div>
       <div className="text-xs opacity-90">
         {ripAnalysis}

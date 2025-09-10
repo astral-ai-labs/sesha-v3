@@ -98,7 +98,7 @@
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/mustache": "^4.2.6",
-    "@types/node": "^20.19.9",
+    "@types/node": "^24.3.1",
     "@types/pg": "^8.15.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
