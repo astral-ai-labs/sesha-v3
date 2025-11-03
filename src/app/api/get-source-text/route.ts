@@ -135,7 +135,7 @@ async function extractMainContent(plainText: string): Promise<string> {
       system: CONTENT_EXTRACTION_PROMPT,
       prompt: plainText,
       temperature: TEMPERATURE,
-      maxTokens: MAX_TOKENS,
+      maxOutputTokens: MAX_TOKENS,
     });
 
     return text.trim();
