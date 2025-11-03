@@ -28,7 +28,7 @@ import type { LengthRange } from "@/db/schema";
 /* ==========================================================================*/
 
 // const model = openai("gpt-4o");
-const model = anthropic("claude-3-5-sonnet-20240620");
+const model = anthropic("claude-sonnet-4-5-20250929");
 
 // Word target mapping
 const WORD_TARGET_MAP: Record<LengthRange, number> = {
@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       temperature: 0.6,
-      maxTokens: 3000
+      maxOutputTokens: 3000
     });
 
     // Build response - only AI data
@@ -265,10 +265,9 @@ export async function POST(request: NextRequest) {
       article: article,
       usage: [
         {
-          inputTokens: usage?.promptTokens ?? 0,
-          outputTokens: usage?.completionTokens ?? 0,
+          inputTokens: usage?.inputTokens ?? 0,
+          outputTokens: usage?.outputTokens ?? 0,
           model: model.modelId,
-          ...usage
         },
       ],
     };

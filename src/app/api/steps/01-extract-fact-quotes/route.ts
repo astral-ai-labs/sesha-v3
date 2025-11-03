@@ -27,7 +27,7 @@ import { generateText } from "ai";
 
 // const model = openai('gpt-4o-mini')
 // const model = anthropic("claude-4-sonnet-20250514");
-const model = anthropic("claude-3-5-sonnet-20240620");
+const model = anthropic("claude-sonnet-4-5-20250929");
 
 /* ==========================================================================*/
 // Prompts
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       temperature: 0.3,
-      maxTokens: 2500,
+      maxOutputTokens: 2500,
     });
 
     // Build response - only AI data
@@ -121,10 +121,9 @@ export async function POST(request: NextRequest) {
       quotes,
       usage: [
         {
-          inputTokens: usage?.promptTokens ?? 0,
-          outputTokens: usage?.completionTokens ?? 0,
+          inputTokens: usage?.inputTokens ?? 0,
+          outputTokens: usage?.outputTokens ?? 0,
           model: model.modelId,
-          ...usage
         },
       ],
     };

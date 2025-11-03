@@ -28,7 +28,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 
 // const model = openai("gpt-4o-mini");
 // const model = anthropic("claude-4-sonnet-20250514");
-const model = anthropic("claude-3-5-sonnet-20240620");
+const model = anthropic("claude-sonnet-4-5-20250929");
 
 /* ==========================================================================*/
 // Prompts
@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       temperature: 0.5,
-      maxTokens: 3700
+      maxOutputTokens: 3700
     });
 
     // Build response - only AI data
@@ -224,10 +224,9 @@ export async function POST(request: NextRequest) {
       paraphrasedArticle: paraphrasedArticle,
       usage: [
         {
-          inputTokens: usage?.promptTokens ?? 0,
-          outputTokens: usage?.completionTokens ?? 0,
+          inputTokens: usage?.inputTokens ?? 0,
+          outputTokens: usage?.outputTokens ?? 0,
           model: model.modelId,
-          ...usage
         },
       ],
     };

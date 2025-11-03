@@ -28,7 +28,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 
 // const model = openai("gpt-4o");
 // const model = anthropic("claude-4-sonnet-20250514");
-const model = anthropic("claude-3-5-sonnet-20240620");
+const model = anthropic("claude-sonnet-4-5-20250929");
 
 /* ==========================================================================*/
 // Schema
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
           content: "Here is a detailed and comprehensive 200-word summary of the key facts, events, and content in the provided source material. I have used newly-authored sentences to avoid plagiarism, but everything is based fully on the provided source-1-content: <summary>",
         },
       ],
-      maxTokens: 3000,
+      maxOutputTokens: 3000,
       temperature: 0.3,
     });
 
@@ -143,10 +143,9 @@ export async function POST(request: NextRequest) {
       summary: summary,
       usage: [
         {
-          inputTokens: usage?.promptTokens ?? 0,
-          outputTokens: usage?.completionTokens ?? 0,
+          inputTokens: usage?.inputTokens ?? 0,
+          outputTokens: usage?.outputTokens ?? 0,
           model: model.modelId,
-          ...usage
         },
       ],
     };

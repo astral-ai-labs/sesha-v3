@@ -29,7 +29,7 @@ import * as cheerio from 'cheerio';
 // Configuration
 /* ==========================================================================*/
 
-const MODEL = anthropic("claude-3-5-sonnet-20240620");
+const MODEL = anthropic("claude-sonnet-4-5-20250929");
 const TEMPERATURE = 0.7;
 const MAX_TOKENS = 3000;
 
@@ -285,7 +285,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       temperature: TEMPERATURE,
-      maxTokens: MAX_TOKENS,
+      maxOutputTokens: MAX_TOKENS,
     });
 
     // Clean up the response by removing any <final-draft></final-draft> tags and trimming whitespace
@@ -302,10 +302,9 @@ export async function POST(request: NextRequest) {
       richContent: richContentJson,
       usage: [
         {
-          inputTokens: usage?.promptTokens ?? 0,
-          outputTokens: usage?.completionTokens ?? 0,
+          inputTokens: usage?.inputTokens ?? 0,
+          outputTokens: usage?.outputTokens ?? 0,
           model: MODEL.modelId,
-          ...usage
         },
       ],
     };

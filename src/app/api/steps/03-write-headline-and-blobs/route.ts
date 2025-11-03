@@ -29,7 +29,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 /* ==========================================================================*/
 
 const structuredModel = openai("gpt-4o");
-const model = anthropic("claude-3-5-sonnet-20240620");
+const model = anthropic("claude-sonnet-4-5-20250929");
 // const model = openai("gpt-4.1");
 
 /* ==========================================================================*/
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
         }
       ],
       temperature: 0.5,
-      maxTokens: 500,
+      maxOutputTokens: 500,
     });
 
     console.log("generated raw headline and blobs", rawHeadlineAndBlobs);
@@ -234,16 +234,14 @@ export async function POST(request: NextRequest) {
       blobs: structuredHeadlineAndBlobs.blobs,
       usage: [
         {
-          inputTokens: anthropicUsage?.promptTokens ?? 0,
-          outputTokens: anthropicUsage?.completionTokens ?? 0,
+          inputTokens: anthropicUsage?.inputTokens ?? 0,
+          outputTokens: anthropicUsage?.outputTokens ?? 0,
           model: model.modelId,
-          ...anthropicUsage
         },
         {
-          inputTokens: openaiUsage?.promptTokens ?? 0,
-          outputTokens: openaiUsage?.completionTokens ?? 0,
+          inputTokens: openaiUsage?.inputTokens ?? 0,
+          outputTokens: openaiUsage?.outputTokens ?? 0,
           model: structuredModel.modelId,
-          ...openaiUsage
         },
       ],
     };

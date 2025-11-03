@@ -29,7 +29,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 /* ==========================================================================*/
 
 const structuredModel = openai("gpt-4o");
-const MODEL = anthropic("claude-3-5-sonnet-20240620");
+const MODEL = anthropic("claude-sonnet-4-5-20250929");
 const TEMPERATURE = 0.4;
 const TEMPERATURE_STRUCTURED = 0.1;
 const MAX_TOKENS = 500;
@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       temperature: TEMPERATURE,
-      maxTokens: MAX_TOKENS,
+      maxOutputTokens: MAX_TOKENS,
     });
 
     console.log("generated raw headline and blobs", rawHeadlineAndBlobs);
@@ -236,16 +236,14 @@ export async function POST(request: NextRequest) {
       blobs: structuredHeadlineAndBlobs.blobs,
       usage: [
         {
-          inputTokens: anthropicUsage?.promptTokens ?? 0,
-          outputTokens: anthropicUsage?.completionTokens ?? 0,
+          inputTokens: anthropicUsage?.inputTokens ?? 0,
+          outputTokens: anthropicUsage?.outputTokens ?? 0,
           model: MODEL.modelId,
-          ...anthropicUsage
         },
         {
-          inputTokens: openaiUsage?.promptTokens ?? 0,
-          outputTokens: openaiUsage?.completionTokens ?? 0,
+          inputTokens: openaiUsage?.inputTokens ?? 0,
+          outputTokens: openaiUsage?.outputTokens ?? 0,
           model: structuredModel.modelId,
-          ...openaiUsage
         },
       ]
     };

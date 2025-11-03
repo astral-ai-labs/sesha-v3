@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       temperature: TEMPERATURE,
-      maxTokens: MAX_TOKENS,
+      maxOutputTokens: MAX_TOKENS,
     });
 
     // Clean up the response by removing any <o></o> tags and trimming whitespace
@@ -181,10 +181,9 @@ export async function POST(request: NextRequest) {
       formattedArticle: cleanedText,
       usage: [
         {
-          inputTokens: usage?.promptTokens ?? 0,
-          outputTokens: usage?.completionTokens ?? 0,
+          inputTokens: usage?.inputTokens ?? 0,
+          outputTokens: usage?.outputTokens ?? 0,
           model: MODEL.modelId,
-          ...usage
         },
       ],
     };

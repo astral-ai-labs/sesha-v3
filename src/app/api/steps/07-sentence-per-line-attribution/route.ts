@@ -26,7 +26,7 @@ import { Step07SentencePerLineAttributionAIResponse, Step07SentencePerLineAttrib
 // Configuration
 /* ==========================================================================*/
 
-const model = anthropic("claude-3-5-sonnet-20240620");
+const model = anthropic("claude-sonnet-4-5-20250929");
 
 /* ==========================================================================*/
 // Schema
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       temperature: 0.2,
-      maxTokens: 3700
+      maxOutputTokens: 3700
     });
 
     // Clean up the response by removing any <o></o> tags and trimming whitespace
@@ -161,10 +161,9 @@ export async function POST(request: NextRequest) {
       formattedArticle: cleanedText,
       usage: [
         {
-          inputTokens: usage?.promptTokens ?? 0,
-          outputTokens: usage?.completionTokens ?? 0,
+          inputTokens: usage?.inputTokens ?? 0,
+          outputTokens: usage?.outputTokens ?? 0,
           model: model.modelId,
-          ...usage
         },
       ],
     };

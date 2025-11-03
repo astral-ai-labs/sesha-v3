@@ -28,7 +28,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 
 // const model = openai("gpt-4o");
 // const model = anthropic("claude-4-sonnet-20250514");
-const MODEL = anthropic("claude-3-5-sonnet-20240620");
+const MODEL = anthropic("claude-sonnet-4-5-20250929");
 
 const TEMPERATURE = 0.8;
 
@@ -335,7 +335,7 @@ async function processSourcesInParallel(sources: Source[], logger?: PipelineLogg
         },
       ],
       temperature: TEMPERATURE,
-      maxTokens: MAX_TOKENS,
+      maxOutputTokens: MAX_TOKENS,
     });
 
     return {
@@ -343,10 +343,9 @@ async function processSourcesInParallel(sources: Source[], logger?: PipelineLogg
       factsBitSplitting1: content,
       usage: [
         {
-          inputTokens: usage?.promptTokens ?? 0,
-          outputTokens: usage?.completionTokens ?? 0,
+          inputTokens: usage?.inputTokens ?? 0,
+          outputTokens: usage?.outputTokens ?? 0,
           model: MODEL.modelId,
-          ...usage,
         },
       ],
     };

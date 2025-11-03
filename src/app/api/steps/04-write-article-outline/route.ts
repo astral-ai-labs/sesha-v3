@@ -28,7 +28,7 @@ import { Step04WriteArticleOutlineRequest, Step04WriteArticleOutlineAIResponse }
 
 // const model = openai('gpt-4o')
 // const model = anthropic("claude-4-sonnet-20250514");
-const model = anthropic("claude-3-5-sonnet-20240620");
+const model = anthropic("claude-sonnet-4-5-20250929");
 
 /* ==========================================================================*/
 // Schema
@@ -298,7 +298,7 @@ You must follow these important mandatory editor instructions:
         },
       ],
       temperature: 0.6,
-      maxTokens: 3000,
+      maxOutputTokens: 3000,
     });
 
     // Build response - only AI data
@@ -306,10 +306,9 @@ You must follow these important mandatory editor instructions:
       outline: outline,
       usage: [
         {
-          inputTokens: usage?.promptTokens ?? 0,
-          outputTokens: usage?.completionTokens ?? 0,
+          inputTokens: usage?.inputTokens ?? 0,
+          outputTokens: usage?.outputTokens ?? 0,
           model: model.modelId,
-          ...usage
         },
       ],
     };
